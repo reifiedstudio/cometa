@@ -3,7 +3,7 @@ terraform {
     bucket         = "reifiedstudio-terraform-state"
     key            = "cometa/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-locks"
+    dynamodb_table = "reifiedstudio-terraform-locks"
     encrypt        = true
   }
 }

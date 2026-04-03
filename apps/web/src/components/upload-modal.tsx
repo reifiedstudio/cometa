@@ -170,9 +170,9 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#F8F8F8] text-[#555A65] transition-colors"
+            className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-[#EBEEF1] bg-white hover:bg-[#F8F8F8] transition-colors text-[#717983] text-xs font-medium"
           >
-            <CloseIcon />
+            ESC
           </button>
         </div>
 

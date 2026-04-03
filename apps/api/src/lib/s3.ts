@@ -1,5 +1,6 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const bucket = process.env.S3_BUCKET;
@@ -50,4 +51,20 @@ export function getS3BucketAndKey(s3Url: string): { bucket: string; key: string 
   const match = s3Url.match(/https:\/\/(.+?)\.s3\..+?\.amazonaws\.com\/(.+)/);
   if (!match) return null;
   return { bucket: match[1], key: match[2] };
+}
+
+export async function getFileBuffer(key: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  if (s3 && bucket) {
+    const response = await s3.send(
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
+    );
+    const bytes = await response.Body?.transformToByteArray();
+    if (!bytes) return null;
+    return { buffer: Buffer.from(bytes), contentType: response.ContentType ?? "application/octet-stream" };
+  }
+
+  // Local fallback
+  const filePath = join(LOCAL_UPLOAD_DIR, key);
+  if (!existsSync(filePath)) return null;
+  return { buffer: readFileSync(filePath), contentType: "application/octet-stream" };
 }

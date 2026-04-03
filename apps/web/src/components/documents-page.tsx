@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { documents as mockDocuments, typeCounts as mockTypeCounts, type Document } from "@/lib/mock-data";
-import { fetchDocuments } from "@/lib/api";
+import { fetchDocuments, updateDocument, API_URL } from "@/lib/api";
 import DocumentDetailModal from "@/components/document-detail-modal";
 import UploadModal from "@/components/upload-modal";
 import SearchModal from "@/components/search-modal";
+import DocumentPreview from "@/components/document-preview";
 
 const typeLabels: Record<string, string> = {
   all: "All",
@@ -161,6 +162,59 @@ function CheckIcon({ approved }: { approved: boolean }) {
   );
 }
 
+function ApproveButton({ documentId, approved: initialApproved }: { documentId: string; approved: boolean }) {
+  const [approved, setApproved] = useState(initialApproved);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setApproved(initialApproved);
+  }, [initialApproved]);
+
+  async function toggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoading(true);
+    const next = !approved;
+    try {
+      await updateDocument(documentId, {
+        isVerified: next,
+        status: next ? "reviewed" : "pending",
+      });
+      setApproved(next);
+    } catch {
+      // revert on error
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={loading}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+        approved
+          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+          : "bg-white border-[#EBEEF1] text-[#717983] hover:border-[#c4c9d1]"
+      } ${loading ? "opacity-50" : ""}`}
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+      {approved ? "Approved" : "Approve"}
+    </button>
+  );
+}
+
 function DownloadSmallIcon() {
   return (
     <svg
@@ -298,10 +352,18 @@ function DocumentCard({
     <div className="rounded-xl border border-[#EBEEF1] bg-white overflow-hidden">
       {/* Thumbnail */}
       <div
-        className="relative h-[200px] bg-[#F8F8F8] flex items-center justify-center cursor-pointer"
+        className="relative h-[200px] bg-[#F8F8F8] flex items-center justify-center cursor-pointer overflow-hidden"
         onClick={() => onSelect(doc)}
       >
-        <DocumentIcon />
+        {doc.thumbnailUrl ? (
+          <img
+            src={doc.thumbnailUrl}
+            alt={doc.description}
+            className="w-full h-full object-cover object-top"
+          />
+        ) : (
+          <DocumentIcon />
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -347,10 +409,10 @@ function DocumentCard({
           {doc.description}
         </p>
 
-        {/* Date + check */}
+        {/* Date + approve */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-[#717983]">{doc.date}</span>
-          <CheckIcon approved={doc.approved} />
+          <ApproveButton documentId={doc.id} approved={doc.approved} />
         </div>
       </div>
     </div>
@@ -384,7 +446,11 @@ function mapApiDocToUi(apiDoc: any): Document {
         })
       : "",
     approved: apiDoc.status === "reviewed" || apiDoc.isVerified === true,
-    thumbnailUrl: apiDoc.thumbnailUrl,
+    thumbnailUrl: apiDoc.thumbnailUrl
+      ? apiDoc.thumbnailUrl.startsWith("/")
+        ? `${API_URL}${apiDoc.thumbnailUrl}`
+        : apiDoc.thumbnailUrl
+      : undefined,
     extractedData: apiDoc.extractedData ?? undefined,
     aiSummary: apiDoc.aiSummary ?? undefined,
     aiFlags: apiDoc.flags
@@ -394,7 +460,10 @@ function mapApiDocToUi(apiDoc: any): Document {
           )
         : undefined
       : undefined,
+    ocrText: apiDoc.ocrText ?? undefined,
     s3Url: apiDoc.s3Url,
+    s3Key: apiDoc.s3Key,
+    mimeType: apiDoc.mimeType,
   };
 }
 

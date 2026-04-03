@@ -5,6 +5,7 @@ import { hashFile } from "../lib/hash.js";
 import { uploadFile, getS3BucketAndKey } from "../lib/s3.js";
 import { extractText } from "../lib/textract.js";
 import { classifyDocument } from "../lib/openai.js";
+import { generateThumbnail } from "../lib/thumbnail.js";
 
 export const uploadRoutes = new Hono();
 
@@ -22,24 +23,20 @@ uploadRoutes.post("/", async (c) => {
   // Generate hash
   const fileHash = await hashFile(arrayBuffer);
 
-  // Check for duplicate
-  const [existing] = await db
-    .select({ id: schema.documents.id })
-    .from(schema.documents)
-    .where(eq(schema.documents.fileHash, fileHash))
-    .limit(1);
-
-  if (existing) {
-    return c.json(
-      { error: "Duplicate file detected", existingId: existing.id },
-      409,
-    );
-  }
-
   // Upload to S3 (or local)
   const timestamp = Date.now();
   const s3Key = `documents/${timestamp}-${file.name}`;
   const s3Url = await uploadFile(s3Key, buffer, file.type);
+
+  // Generate and upload thumbnail
+  let thumbnailUrl: string | null = null;
+  let thumbnailKey: string | null = null;
+  const thumb = await generateThumbnail(buffer, file.type);
+  if (thumb) {
+    thumbnailKey = `thumbnails/${timestamp}-${file.name}.jpg`;
+    await uploadFile(thumbnailKey, thumb, "image/jpeg");
+    thumbnailUrl = `/api/files/${thumbnailKey}`;
+  }
 
   // Create document record
   const [document] = await db
@@ -51,6 +48,8 @@ uploadRoutes.post("/", async (c) => {
       fileHash,
       s3Url,
       s3Key,
+      thumbnailUrl,
+      thumbnailKey,
       status: "processing",
       source: "upload",
     })

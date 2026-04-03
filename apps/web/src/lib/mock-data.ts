@@ -12,6 +12,8 @@ export interface Document {
   date: string;
   approved: boolean;
   thumbnailUrl?: string;
+  s3Key?: string;
+  mimeType?: string;
   extractedData?: {
     supplier?: string;
     invoiceNo?: string;
@@ -23,6 +25,7 @@ export interface Document {
   };
   aiSummary?: string;
   aiFlags?: { type: "warning" | "success"; message: string }[];
+  ocrText?: string;
   s3Url?: string;
 }
 

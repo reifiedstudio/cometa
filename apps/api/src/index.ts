@@ -4,6 +4,7 @@ import { documentRoutes } from "./routes/documents.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { searchRoutes } from "./routes/search.js";
 import { healthRoutes } from "./routes/health.js";
+import { fileRoutes } from "./routes/files.js";
 
 const app = new Hono();
 
@@ -16,6 +17,7 @@ app.route("/health", healthRoutes);
 app.route("/api/documents", documentRoutes);
 app.route("/api/upload", uploadRoutes);
 app.route("/api/search", searchRoutes);
+app.route("/api/files", fileRoutes);
 
 export default {
   port: Number(process.env.PORT ?? 3001),

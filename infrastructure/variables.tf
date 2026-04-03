@@ -28,20 +28,20 @@ variable "root_domain" {
   default     = "cometa.co"
 }
 
-variable "database_url" {
-  description = "Neon Postgres connection string"
-  type        = string
-  sensitive   = true
-}
+# variable "database_url" {
+#   description = "Neon Postgres connection string"
+#   type        = string
+#   sensitive   = true
+# }
 
-variable "openai_api_key" {
-  description = "OpenAI API key for document classification"
-  type        = string
-  sensitive   = true
-}
+# variable "openai_api_key" {
+#   description = "OpenAI API key for document classification"
+#   type        = string
+#   sensitive   = true
+# }
 
-variable "api_port" {
-  description = "Port the API container listens on"
-  type        = number
-  default     = 3001
-}
+# variable "api_port" {
+#   description = "Port the API container listens on"
+#   type        = number
+#   default     = 3001
+# }
