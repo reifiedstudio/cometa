@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Document } from "@/lib/mock-data";
 import { updateDocument, API_URL } from "@/lib/api";
+import { displayConfig as displayConfigs } from "@cometa/shared";
 
 const typeLabels: Record<Document["type"], string> = {
   invoice: "Invoice",
@@ -203,80 +204,87 @@ function ExtractedDataRow({ label, value, isMoney }: ExtractedDataRowProps) {
   );
 }
 
-function formatLabel(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[_-]/g, " ")
-    .replace(/^\w/, (c) => c.toUpperCase())
-    .trim();
-}
+function ExtractedDataSection({ data, docType }: { data: Record<string, unknown>; docType: string }) {
+  const config = displayConfigs[docType as keyof typeof displayConfigs];
 
-function isMoneyField(key: string): boolean {
-  return /total|subtotal|tax|tip|amount|price|vat|cost|fee/i.test(key);
-}
-
-function ExtractedDataSection({ data }: { data: Record<string, unknown> }) {
-  const scalarFields: [string, string][] = [];
-  const lineItems: Record<string, unknown>[] | null =
-    Array.isArray(data.items) && data.items.length > 0 && typeof data.items[0] === "object"
-      ? (data.items as Record<string, unknown>[])
-      : null;
-  const nestedFields: [string, Record<string, unknown>][] = [];
-
-  for (const [key, value] of Object.entries(data)) {
-    if (key === "items" && lineItems) continue;
-    if (value == null || value === "") continue;
-    if (typeof value === "object" && !Array.isArray(value)) {
-      nestedFields.push([key, value as Record<string, unknown>]);
-    } else if (typeof value !== "object") {
-      scalarFields.push([key, String(value)]);
-    }
+  if (!config) {
+    // Fallback for unknown types — render all scalar fields
+    const entries = Object.entries(data).filter(
+      ([, v]) => v != null && v !== "" && typeof v !== "object"
+    );
+    if (entries.length === 0) return null;
+    return (
+      <div className="space-y-2.5">
+        <h3 className="text-sm font-semibold text-[#212327]">Details</h3>
+        <div className="bg-white rounded-xl border border-[#EBEEF1] p-4">
+          {entries.map(([k, v]) => (
+            <ExtractedDataRow key={k} label={k} value={String(v)} />
+          ))}
+        </div>
+      </div>
+    );
   }
+
+  // Render fields in configured order
+  const fieldRows = config.fields
+    .filter((f) => {
+      const val = data[f.key];
+      if (val == null) return false;
+      if (Array.isArray(val)) return val.length > 0;
+      return val !== "";
+    })
+    .map((f) => {
+      const val = data[f.key];
+      const display = Array.isArray(val) ? val.join(", ") : String(val);
+      return <ExtractedDataRow key={f.key} label={f.label} value={display} isMoney={f.isMoney} />;
+    });
+
+  // Render line items table
+  const items = Array.isArray(data.items) ? (data.items as Record<string, unknown>[]) : null;
+  const cols = config.itemColumns;
 
   return (
     <div className="space-y-4">
-      {/* Scalar fields */}
-      {scalarFields.length > 0 && (
+      {fieldRows.length > 0 && (
         <div className="space-y-2.5">
           <h3 className="text-sm font-semibold text-[#212327]">Details</h3>
           <div className="bg-white rounded-xl border border-[#EBEEF1] p-4">
-            {scalarFields.map(([key, value]) => (
-              <ExtractedDataRow
-                key={key}
-                label={formatLabel(key)}
-                value={value}
-                isMoney={isMoneyField(key)}
-              />
-            ))}
+            {fieldRows}
           </div>
         </div>
       )}
 
-      {/* Line items */}
-      {lineItems && (
+      {items && items.length > 0 && cols && (
         <div className="space-y-2.5">
           <h3 className="text-sm font-semibold text-[#212327]">Line Items</h3>
           <div className="bg-white rounded-xl border border-[#EBEEF1] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEEF1] bg-[#F8F8F8]">
-                  <th className="text-left py-2 px-4 text-[#555A65] font-medium">Item</th>
-                  <th className="text-right py-2 px-4 text-[#555A65] font-medium">Qty</th>
-                  <th className="text-right py-2 px-4 text-[#555A65] font-medium">Price</th>
+                  {cols.map((col) => (
+                    <th
+                      key={col.key}
+                      className={`py-2 px-4 text-[#555A65] font-medium ${col.align === "right" ? "text-right" : "text-left"}`}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {lineItems.map((item, i) => (
+                {items.map((item, i) => (
                   <tr key={i} className="border-b border-[#EBEEF1] last:border-b-0">
-                    <td className="py-2 px-4 text-[#212327]">
-                      {String(item.name ?? item.description ?? item.item ?? "")}
-                    </td>
-                    <td className="py-2 px-4 text-right text-[#555A65]">
-                      {String(item.quantity ?? item.qty ?? 1)}
-                    </td>
-                    <td className="py-2 px-4 text-right font-semibold text-[#212327]">
-                      {String(item.totalPrice ?? item.unitPrice ?? item.price ?? item.amount ?? "")}
-                    </td>
+                    {cols.map((col) => {
+                      const val = item[col.key];
+                      return (
+                        <td
+                          key={col.key}
+                          className={`py-2 px-4 ${col.align === "right" ? "text-right" : ""} ${col.isMoney ? "font-semibold text-[#212327]" : "text-[#555A65]"}`}
+                        >
+                          {val != null ? String(val) : ""}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -284,25 +292,6 @@ function ExtractedDataSection({ data }: { data: Record<string, unknown> }) {
           </div>
         </div>
       )}
-
-      {/* Nested objects (e.g. payment info) */}
-      {nestedFields.map(([key, obj]) => (
-        <div key={key} className="space-y-2.5">
-          <h3 className="text-sm font-semibold text-[#212327]">{formatLabel(key)}</h3>
-          <div className="bg-white rounded-xl border border-[#EBEEF1] p-4">
-            {Object.entries(obj)
-              .filter(([, v]) => v != null && v !== "" && typeof v !== "object")
-              .map(([k, v]) => (
-                <ExtractedDataRow
-                  key={k}
-                  label={formatLabel(k)}
-                  value={String(v)}
-                  isMoney={isMoneyField(k)}
-                />
-              ))}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -380,16 +369,42 @@ export default function DocumentDetailModal({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeBadgeColors[doc.type]}`}
+            <select
+              value={doc.type}
+              onChange={async (e) => {
+                const newType = e.target.value as Document["type"];
+                try {
+                  await updateDocument(doc.id, { type: newType });
+                  onApprove?.();
+                } catch (err) {
+                  console.error("Failed to update type:", err);
+                }
+              }}
+              className={`appearance-none cursor-pointer px-2.5 py-1 pr-6 rounded-full text-xs font-medium border-0 ${typeBadgeColors[doc.type]} bg-[length:12px] bg-[right_6px_center] bg-no-repeat`}
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
             >
-              {typeLabels[doc.type]}
-            </span>
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusBadgeColors[doc.status]}`}
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <select
+              value={doc.status}
+              onChange={async (e) => {
+                const newStatus = e.target.value as Document["status"];
+                try {
+                  await updateDocument(doc.id, { status: newStatus });
+                  onApprove?.();
+                } catch (err) {
+                  console.error("Failed to update status:", err);
+                }
+              }}
+              className={`appearance-none cursor-pointer px-2.5 py-1 pr-6 rounded-full text-xs font-medium border-0 ${statusBadgeColors[doc.status]} bg-[length:12px] bg-[right_6px_center] bg-no-repeat`}
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
             >
-              {statusLabels[doc.status]}
-            </span>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -471,7 +486,7 @@ export default function DocumentDetailModal({
 
             {/* Extracted Data */}
             {doc.extractedData && Object.keys(doc.extractedData).length > 0 && (
-              <ExtractedDataSection data={doc.extractedData} />
+              <ExtractedDataSection data={doc.extractedData} docType={doc.type} />
             )}
             {/* OCR Text */}
             {doc.ocrText && (

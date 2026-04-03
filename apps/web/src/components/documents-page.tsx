@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { documents as mockDocuments, typeCounts as mockTypeCounts, type Document } from "@/lib/mock-data";
+import { type Document } from "@/lib/mock-data";
 import { fetchDocuments, updateDocument, API_URL } from "@/lib/api";
 import DocumentDetailModal from "@/components/document-detail-modal";
 import UploadModal from "@/components/upload-modal";
@@ -469,8 +469,8 @@ function mapApiDocToUi(apiDoc: any): Document {
 
 export default function DocumentsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
-  const [counts, setCounts] = useState<Record<string, number>>(mockTypeCounts);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({ all: 0, invoice: 0, receipt: 0, contract: 0, delivery_note: 0, bill: 0 });
   const [loading, setLoading] = useState(true);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
     null
@@ -492,9 +492,8 @@ export default function DocumentsPage() {
           setCounts(data.counts);
         }
       } catch {
-        // Fallback to mock data if API is unavailable
-        setDocuments(mockDocuments);
-        setCounts(mockTypeCounts);
+        setDocuments([]);
+        setCounts({ all: 0, invoice: 0, receipt: 0, contract: 0, delivery_note: 0, bill: 0 });
       } finally {
         setLoading(false);
       }
