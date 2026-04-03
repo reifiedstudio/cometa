@@ -1,0 +1,11 @@
+project_name = "cometa"
+environment  = "dev"
+aws_region   = "us-east-1"
+team_name    = "reifiedstudio"
+root_domain  = "cometa.co"
+
+# Neon Postgres
+database_url = "postgresql://neondb_owner:xxx@ep-soft-water-anz503b7-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# OpenAI
+openai_api_key = "sk-..."
