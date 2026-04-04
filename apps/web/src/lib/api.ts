@@ -61,6 +61,24 @@ export async function deleteDocument(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete document");
 }
 
+export async function restoreDocument(id: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/documents/${id}/restore`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to restore document");
+  return res.json();
+}
+
+export async function fetchTrashedDocuments(): Promise<any> {
+  const res = await fetch(`${API_URL}/api/documents?status=rejected`);
+  if (!res.ok) throw new Error("Failed to fetch trashed documents");
+  return res.json();
+}
+
+export async function permanentlyDeleteDocument(id: string): Promise<void> {
+  // For now uses the same delete endpoint — later can add a permanent delete
+  const res = await fetch(`${API_URL}/api/documents/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete document");
+}
+
 export async function reprocessDocument(id: string): Promise<any> {
   const res = await fetch(`${API_URL}/api/documents/${id}/reprocess`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to reprocess document");

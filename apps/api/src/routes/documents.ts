@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db, schema } from "@cometa/db";
-import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ne, like, sql } from "drizzle-orm";
 
 export const documentRoutes = new Hono();
 
@@ -13,6 +13,11 @@ documentRoutes.get("/", async (c) => {
   const dateTo = c.req.query("dateTo");
 
   const conditions = [];
+
+  // Exclude rejected docs from main list unless explicitly filtering for them
+  if (status !== "rejected") {
+    conditions.push(ne(schema.documents.status, "rejected"));
+  }
 
   if (type && type !== "all") {
     conditions.push(eq(schema.documents.type, type as typeof schema.documents.type.enumValues[number]));
@@ -189,14 +194,14 @@ documentRoutes.post("/:id/reprocess", async (c) => {
   return c.json({ id, status: "processing" });
 });
 
-// DELETE /:id — Soft delete (move to bin)
+// DELETE /:id — Soft delete (move to trash)
 documentRoutes.delete("/:id", async (c) => {
   const id = c.req.param("id");
 
   const [deleted] = await db
     .update(schema.documents)
     .set({
-      status: "reviewed" as const,
+      status: "rejected" as const,
       updatedAt: new Date(),
     })
     .where(eq(schema.documents.id, id))
@@ -207,4 +212,24 @@ documentRoutes.delete("/:id", async (c) => {
   }
 
   return c.json({ id: deleted.id, status: "deleted" });
+});
+
+// POST /:id/restore — Restore from trash
+documentRoutes.post("/:id/restore", async (c) => {
+  const id = c.req.param("id");
+
+  const [restored] = await db
+    .update(schema.documents)
+    .set({
+      status: "pending" as const,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.documents.id, id))
+    .returning();
+
+  if (!restored) {
+    return c.json({ error: "Document not found" }, 404);
+  }
+
+  return c.json(restored);
 });

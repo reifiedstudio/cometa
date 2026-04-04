@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import Link from "next/link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -128,9 +129,9 @@ function Sidebar() {
 
       {/* Nav icons */}
       <nav className="flex flex-col items-center gap-1 flex-1">
-        <SidebarButton icon={<HomeIcon />} label="Home" />
-        <SidebarButton icon={<DocumentsIcon />} label="Documents" active />
-        <SidebarButton icon={<TrashIcon />} label="Trash" />
+        <SidebarLink href="/" icon={<HomeIcon />} label="Home" />
+        <SidebarLink href="/" icon={<DocumentsIcon />} label="Documents" />
+        <SidebarLink href="/trash" icon={<TrashIcon />} label="Trash" />
       </nav>
 
       {/* User avatar */}
@@ -143,23 +144,24 @@ function Sidebar() {
   );
 }
 
-function SidebarButton({
+function SidebarLink({
+  href,
   icon,
   label,
-  active = false,
 }: {
+  href: string;
   icon: React.ReactNode;
   label: string;
-  active?: boolean;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger
-        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-          active
-            ? "bg-[#F8F8F8] text-[#212327]"
-            : "text-[#717983] hover:bg-[#F8F8F8] hover:text-[#555A65]"
-        }`}
+        render={
+          <Link
+            href={href}
+            className="w-10 h-10 flex items-center justify-center rounded-lg transition-colors text-[#717983] hover:bg-[#F8F8F8] hover:text-[#555A65]"
+          />
+        }
       >
         {icon}
       </TooltipTrigger>

@@ -8,6 +8,7 @@ import UploadModal from "@/components/upload-modal";
 import SearchModal from "@/components/search-modal";
 import DocumentPreview from "@/components/document-preview";
 import DateRangePicker from "@/components/date-range-picker";
+import DocumentList from "@/components/document-list";
 
 const typeLabels: Record<string, string> = {
   all: "All",
@@ -94,8 +95,8 @@ function UploadIcon() {
 function DocumentIcon() {
   return (
     <svg
-      width="32"
-      height="32"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       stroke="#717983"
@@ -342,86 +343,62 @@ function CardDropdown({ onClose }: { onClose: () => void }) {
   );
 }
 
-function DocumentCard({
+function DocumentRow({
   doc,
   onSelect,
 }: {
   doc: Document;
   onSelect: (doc: Document) => void;
 }) {
-  const [showMenu, setShowMenu] = useState(false);
   const isProcessing = doc.status === "processing";
 
   return (
-    <div className={`rounded-xl border border-[#EBEEF1] bg-white overflow-hidden transition-opacity ${isProcessing ? "opacity-60 pointer-events-none" : ""}`}>
+    <div
+      className={`group flex items-center gap-4 px-4 py-3 rounded-lg border border-transparent hover:border-[#EBEEF1] hover:bg-[#FAFAFA] cursor-pointer transition-all ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}
+      onClick={() => !isProcessing && onSelect(doc)}
+    >
       {/* Thumbnail */}
-      <div
-        className="relative h-[200px] bg-[#F8F8F8] flex items-center justify-center cursor-pointer overflow-hidden"
-        onClick={() => !isProcessing && onSelect(doc)}
-      >
+      <div className="w-10 h-10 rounded-lg bg-[#F8F8F8] overflow-hidden flex-shrink-0">
         {isProcessing ? (
           <div className="w-full h-full bg-gradient-to-r from-[#EBEEF1] via-[#F8F8F8] to-[#EBEEF1] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
         ) : doc.thumbnailUrl ? (
           <img
             src={doc.thumbnailUrl}
-            alt={doc.description}
-            className="w-full h-full object-cover object-top"
+            alt=""
+            className="w-full h-full object-cover"
           />
         ) : (
-          <DocumentIcon />
+          <div className="w-full h-full flex items-center justify-center text-[#717983]">
+            <DocumentIcon />
+          </div>
         )}
-        {!isProcessing && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu((prev) => !prev);
-            }}
-            className="absolute top-3 right-3 p-1.5 rounded-md bg-white border border-[#EBEEF1] shadow-sm hover:bg-[#F8F8F8] text-[#717983]"
-          >
-            <MoreIcon />
-          </button>
-        )}
-        {showMenu && <CardDropdown onClose={() => setShowMenu(false)} />}
       </div>
 
-      {/* Content */}
-      <div
-        className="p-3.5 space-y-2.5 cursor-pointer"
-        onClick={() => !isProcessing && onSelect(doc)}
-      >
-        {/* Badges */}
-        <div className="flex flex-wrap gap-1.5">
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${typeBadgeColors[doc.type]}`}
-          >
-            {typeLabels[doc.type] ?? doc.type}
-          </span>
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadgeColors[doc.status]}`}
-          >
-            {statusLabels[doc.status]}
-          </span>
-          {doc.flags.map((flag) => (
-            <span
-              key={flag}
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${flagBadgeColors[flag]}`}
-            >
-              {flagLabels[flag]}
-            </span>
-          ))}
-        </div>
-
-        {/* Description */}
-        <p className="text-sm font-semibold text-[#212327] leading-snug line-clamp-2">
+      {/* Description */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-[#212327] truncate">
           {doc.description}
         </p>
+      </div>
 
-        {/* Date + approve */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[#717983]">{doc.date}</span>
-          <ApproveButton documentId={doc.id} approved={doc.approved} />
-        </div>
+      {/* Type badge */}
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${typeBadgeColors[doc.type]}`}>
+        {typeLabels[doc.type] ?? doc.type}
+      </span>
+
+      {/* Status badge */}
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${statusBadgeColors[doc.status]}`}>
+        {statusLabels[doc.status]}
+      </span>
+
+      {/* Date */}
+      <span className="text-xs text-[#717983] w-24 text-right flex-shrink-0">
+        {doc.date}
+      </span>
+
+      {/* Approve */}
+      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <ApproveButton documentId={doc.id} approved={doc.approved} />
       </div>
     </div>
   );
@@ -622,38 +599,29 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* Document grid */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="rounded-xl border border-[#EBEEF1] bg-white overflow-hidden">
-                <div className="h-[200px] bg-gradient-to-r from-[#EBEEF1] via-[#F8F8F8] to-[#EBEEF1] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
-                <div className="p-3.5 space-y-2.5">
-                  <div className="flex gap-1.5">
-                    <div className="h-5 w-16 bg-[#EBEEF1] rounded-full animate-pulse" />
-                    <div className="h-5 w-14 bg-[#EBEEF1] rounded-full animate-pulse" />
-                  </div>
-                  <div className="h-4 w-3/4 bg-[#EBEEF1] rounded animate-pulse" />
-                  <div className="flex justify-between">
-                    <div className="h-3 w-20 bg-[#EBEEF1] rounded animate-pulse" />
-                    <div className="h-6 w-16 bg-[#EBEEF1] rounded-full animate-pulse" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredDocuments.map((doc) => (
-              <DocumentCard
-                key={doc.id}
-                doc={doc}
-                onSelect={handleSelectDocument}
-              />
-            ))}
-          </div>
-        )}
+      {/* Document list */}
+      <div className="flex-1 overflow-y-auto px-8 py-2">
+        <DocumentList
+          documents={filteredDocuments.map((doc) => ({
+            id: doc.id,
+            description: doc.description,
+            type: doc.type,
+            status: doc.status,
+            date: doc.date,
+            thumbnailUrl: doc.thumbnailUrl,
+          }))}
+          loading={loading}
+          emptyMessage="No documents found. Upload one to get started."
+          onSelect={(item) => {
+            const doc = filteredDocuments.find((d) => d.id === item.id);
+            if (doc) handleSelectDocument(doc);
+          }}
+          actions={(item) => {
+            const doc = filteredDocuments.find((d) => d.id === item.id);
+            if (!doc) return null;
+            return <ApproveButton documentId={doc.id} approved={doc.approved} />;
+          }}
+        />
       </div>
 
       {/* Modals */}
