@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { uploadDocument } from "@/lib/api";
+import { toast } from "sonner";
 
 function CloseIcon() {
   return (
@@ -109,6 +110,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
           await uploadDocument(file);
         }
         setUploadStatus("done");
+        toast.success(`${files.length} document${files.length > 1 ? "s" : ""} uploaded`);
         onUploadComplete?.();
         // Auto-close after a short delay
         setTimeout(() => {

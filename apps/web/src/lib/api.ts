@@ -60,3 +60,9 @@ export async function deleteDocument(id: string): Promise<void> {
   const res = await fetch(`${API_URL}/api/documents/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete document");
 }
+
+export async function reprocessDocument(id: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/documents/${id}/reprocess`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to reprocess document");
+  return res.json();
+}

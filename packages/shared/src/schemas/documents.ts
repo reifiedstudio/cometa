@@ -3,7 +3,7 @@ import { z } from "zod";
 export const documentTypeSchema = z.enum(["invoice", "receipt", "contract", "delivery_note", "bill"]);
 export type DocumentType = z.infer<typeof documentTypeSchema>;
 
-export const documentStatusSchema = z.enum(["processing", "pending", "reviewed", "approved", "overdue", "awaiting_signature"]);
+export const documentStatusSchema = z.enum(["processing", "pending", "reviewed", "approved", "rejected", "overdue", "awaiting_signature"]);
 export type DocumentStatus = z.infer<typeof documentStatusSchema>;
 
 export const documentSourceSchema = z.enum(["upload", "email"]);

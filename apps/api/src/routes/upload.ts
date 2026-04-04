@@ -6,8 +6,23 @@ import { uploadFile, getS3BucketAndKey } from "../lib/s3.js";
 import { extractText } from "../lib/textract.js";
 import { classifyDocument } from "../lib/openai.js";
 import { generateThumbnail } from "../lib/thumbnail.js";
+import sharp from "sharp";
 
 export const uploadRoutes = new Hono();
+
+async function compressImage(buffer: Buffer, mimeType: string): Promise<{ buffer: Buffer; mimeType: string }> {
+  if (!mimeType.startsWith("image/")) {
+    return { buffer, mimeType };
+  }
+
+  const compressed = await sharp(buffer)
+    .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  console.log(`[upload] Compressed image: ${(buffer.length / 1024).toFixed(0)}KB → ${(compressed.length / 1024).toFixed(0)}KB`);
+  return { buffer: compressed, mimeType: "image/jpeg" };
+}
 
 uploadRoutes.post("/", async (c) => {
   const body = await c.req.parseBody();
@@ -18,15 +33,21 @@ uploadRoutes.post("/", async (c) => {
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const rawBuffer = Buffer.from(arrayBuffer);
 
-  // Generate hash
+  // Generate hash from original file
   const fileHash = await hashFile(arrayBuffer);
+
+  // Compress images before storing
+  const { buffer, mimeType } = await compressImage(rawBuffer, file.type);
 
   // Upload to S3 (or local)
   const timestamp = Date.now();
-  const s3Key = `documents/${timestamp}-${file.name}`;
-  const s3Url = await uploadFile(s3Key, buffer, file.type);
+  const fileName = mimeType === "image/jpeg" && !file.name.endsWith(".jpg")
+    ? `${file.name}.jpg`
+    : file.name;
+  const s3Key = `documents/${timestamp}-${fileName}`;
+  const s3Url = await uploadFile(s3Key, buffer, mimeType);
 
   // Generate and upload thumbnail
   let thumbnailUrl: string | null = null;
@@ -43,7 +64,7 @@ uploadRoutes.post("/", async (c) => {
     .insert(schema.documents)
     .values({
       originalName: file.name,
-      mimeType: file.type,
+      mimeType,
       sizeBytes: buffer.length,
       fileHash,
       s3Url,

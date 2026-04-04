@@ -5,7 +5,7 @@ export const documentTypeEnum = pgEnum("document_type", [
 ]);
 
 export const documentStatusEnum = pgEnum("document_status", [
-  "processing", "pending", "reviewed", "approved", "overdue", "awaiting_signature"
+  "processing", "pending", "reviewed", "approved", "rejected", "overdue", "awaiting_signature"
 ]);
 
 export const documentSourceEnum = pgEnum("document_source", [

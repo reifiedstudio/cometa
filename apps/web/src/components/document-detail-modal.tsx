@@ -1,9 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Document } from "@/lib/mock-data";
-import { updateDocument, API_URL } from "@/lib/api";
+import { updateDocument, deleteDocument, reprocessDocument, API_URL } from "@/lib/api";
+import { toast } from "sonner";
 import { displayConfig as displayConfigs } from "@cometa/shared";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const typeLabels: Record<Document["type"], string> = {
   invoice: "Invoice",
@@ -25,6 +49,7 @@ const statusLabels: Record<Document["status"], string> = {
   reviewed: "Reviewed",
   pending: "Pending Review",
   processing: "Processing",
+  rejected: "Rejected",
   overdue: "Overdue",
   awaiting_signature: "Awaiting Signature",
 };
@@ -33,6 +58,7 @@ const statusBadgeColors: Record<Document["status"], string> = {
   reviewed: "bg-gray-100 text-gray-600",
   pending: "bg-orange-100 text-orange-600",
   processing: "bg-blue-100 text-blue-600",
+  rejected: "bg-red-100 text-red-600",
   overdue: "bg-red-100 text-red-600",
   awaiting_signature: "bg-blue-100 text-blue-600",
 };
@@ -185,30 +211,105 @@ function DocumentPreviewIcon() {
   );
 }
 
-interface ExtractedDataRowProps {
+function ExtractedDataRow({ label, value, fieldKey, isMoney, onSave }: {
   label: string;
   value: string;
+  fieldKey: string;
   isMoney?: boolean;
-}
+  onSave?: (key: string, value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function ExtractedDataRow({ label, value, isMoney }: ExtractedDataRowProps) {
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
   return (
-    <div className="flex items-center justify-between py-2 border-b border-[#EBEEF1] last:border-b-0">
+    <div className="group flex items-center justify-between py-2 border-b border-[#EBEEF1] last:border-b-0">
       <span className="text-sm text-[#555A65]">{label}</span>
-      <span
-        className={`text-sm text-[#212327] ${isMoney ? "font-semibold" : ""}`}
-      >
-        {value}
-      </span>
+      <div className="flex items-center gap-1.5">
+        {editing ? (
+          <>
+            <input
+              ref={inputRef}
+              type={isMoney ? "number" : "text"}
+              step={isMoney ? "0.01" : undefined}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { onSave?.(fieldKey, editValue); setEditing(false); }
+                if (e.key === "Escape") { setEditValue(value); setEditing(false); }
+              }}
+              className="text-sm text-[#212327] text-right bg-[#F8F8F8] border border-[#EBEEF1] rounded px-2 py-0.5 w-40 outline-none focus:border-[#212327]"
+            />
+            <button
+              type="button"
+              onClick={() => { onSave?.(fieldKey, editValue); setEditing(false); }}
+              className="text-emerald-600 hover:text-emerald-700 p-0.5"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditValue(value); setEditing(false); }}
+              className="text-[#717983] hover:text-red-500 p-0.5"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <>
+            <span className={`text-sm text-[#212327] ${isMoney ? "font-semibold" : ""}`}>
+              {value}
+            </span>
+            {onSave && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="opacity-0 group-hover:opacity-100 text-[#717983] hover:text-[#212327] p-0.5 transition-opacity"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-function ExtractedDataSection({ data, docType }: { data: Record<string, unknown>; docType: string }) {
+function ExtractedDataSection({ data, docType, documentId, onSave }: {
+  data: Record<string, unknown>;
+  docType: string;
+  documentId: string;
+  onSave?: () => void;
+}) {
   const config = displayConfigs[docType as keyof typeof displayConfigs];
 
+  const handleFieldSave = async (key: string, value: string) => {
+    const fieldConfig = config?.fields.find((f) => f.key === key);
+    const updatedData = { ...data };
+    updatedData[key] = fieldConfig?.isMoney ? Number(value) : value;
+    try {
+      await updateDocument(documentId, { extractedData: updatedData });
+      toast.success("Field updated");
+      onSave?.();
+    } catch (err) {
+      toast.error("Failed to save field");
+    }
+  };
+
   if (!config) {
-    // Fallback for unknown types — render all scalar fields
     const entries = Object.entries(data).filter(
       ([, v]) => v != null && v !== "" && typeof v !== "object"
     );
@@ -218,14 +319,13 @@ function ExtractedDataSection({ data, docType }: { data: Record<string, unknown>
         <h3 className="text-sm font-semibold text-[#212327]">Details</h3>
         <div className="bg-white rounded-xl border border-[#EBEEF1] p-4">
           {entries.map(([k, v]) => (
-            <ExtractedDataRow key={k} label={k} value={String(v)} />
+            <ExtractedDataRow key={k} label={k} fieldKey={k} value={String(v)} onSave={handleFieldSave} />
           ))}
         </div>
       </div>
     );
   }
 
-  // Render fields in configured order
   const fieldRows = config.fields
     .filter((f) => {
       const val = data[f.key];
@@ -236,10 +336,18 @@ function ExtractedDataSection({ data, docType }: { data: Record<string, unknown>
     .map((f) => {
       const val = data[f.key];
       const display = Array.isArray(val) ? val.join(", ") : String(val);
-      return <ExtractedDataRow key={f.key} label={f.label} value={display} isMoney={f.isMoney} />;
+      return (
+        <ExtractedDataRow
+          key={f.key}
+          label={f.label}
+          fieldKey={f.key}
+          value={display}
+          isMoney={f.isMoney}
+          onSave={handleFieldSave}
+        />
+      );
     });
 
-  // Render line items table
   const items = Array.isArray(data.items) ? (data.items as Record<string, unknown>[]) : null;
   const cols = config.itemColumns;
 
@@ -312,6 +420,8 @@ export default function DocumentDetailModal({
   const [approving, setApproving] = useState(false);
   const [showOcrText, setShowOcrText] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleClose = useCallback(() => {
     setClosing(true);
@@ -341,6 +451,21 @@ export default function DocumentDetailModal({
   const data = doc.extractedData;
   const flags = doc.aiFlags ?? [];
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteDocument(doc.id);
+      toast.success("Document deleted");
+      onApprove?.();
+      handleClose();
+    } catch (err) {
+      toast.error("Failed to delete document");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-250 ${closing ? "opacity-0" : "opacity-100"}`}>
       {/* Backdrop */}
@@ -367,57 +492,65 @@ export default function DocumentDetailModal({
             <h2 className="text-lg font-semibold text-[#212327]">
               Document Detail
             </h2>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeColors[doc.status]}`}>
+              {statusLabels[doc.status]}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={doc.type}
-              onChange={async (e) => {
-                const newType = e.target.value as Document["type"];
+              onValueChange={async (newType: string) => {
                 try {
-                  await updateDocument(doc.id, { type: newType });
+                  await updateDocument(doc.id, { type: newType as Document["type"] });
+                  toast.success("Document type updated");
                   onApprove?.();
                 } catch (err) {
-                  console.error("Failed to update type:", err);
+                  toast.error("Failed to update type");
                 }
               }}
-              className={`appearance-none cursor-pointer px-2.5 py-1 pr-6 rounded-full text-xs font-medium border-0 ${typeBadgeColors[doc.type]} bg-[length:12px] bg-[right_6px_center] bg-no-repeat`}
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
             >
-              {Object.entries(typeLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <select
-              value={doc.status}
-              onChange={async (e) => {
-                const newStatus = e.target.value as Document["status"];
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(typeLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={async () => {
                 try {
-                  await updateDocument(doc.id, { status: newStatus });
+                  await reprocessDocument(doc.id);
+                  toast.success("Reprocessing started");
                   onApprove?.();
                 } catch (err) {
-                  console.error("Failed to update status:", err);
+                  toast.error("Failed to reprocess document");
                 }
               }}
-              className={`appearance-none cursor-pointer px-2.5 py-1 pr-6 rounded-full text-xs font-medium border-0 ${statusBadgeColors[doc.status]} bg-[length:12px] bg-[right_6px_center] bg-no-repeat`}
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")` }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#555A65] bg-white border border-[#EBEEF1] rounded-lg hover:bg-[#F8F8F8] transition-colors"
+              title="Re-run AI classification"
             >
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              Reprocess
+            </button>
           </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto flex min-h-0">
           {/* Left - Document preview */}
-          <div className="w-[58%] p-6">
-            <div className="w-full h-full min-h-[500px] bg-[#F8F8F8] rounded-xl border border-[#EBEEF1] flex items-center justify-center overflow-hidden">
+          <div className="w-[58%] p-8 overflow-y-auto bg-white">
+            <div className="w-full max-w-[90%] mx-auto bg-[#F5F5F5] rounded-xl p-4 flex items-center justify-center overflow-hidden">
               {doc.s3Key ? (
                 <img
                   src={`${API_URL}/api/files/${doc.s3Key}`}
                   alt={doc.description}
-                  className="w-full h-full object-contain"
+                  className="w-full rounded-lg shadow-lg"
                 />
               ) : (
                 <div className="text-center">
@@ -435,7 +568,7 @@ export default function DocumentDetailModal({
 
           {/* Right - Details */}
           <div className="w-[42%] flex flex-col">
-          <div className="flex-1 p-6 pl-0 space-y-6 overflow-y-auto">
+          <div className="flex-1 p-6 pl-8 space-y-6 overflow-y-auto border-l border-[#EBEEF1]">
             {/* Description */}
             {doc.aiSummary && (
               <div>
@@ -486,7 +619,7 @@ export default function DocumentDetailModal({
 
             {/* Extracted Data */}
             {doc.extractedData && Object.keys(doc.extractedData).length > 0 && (
-              <ExtractedDataSection data={doc.extractedData} docType={doc.type} />
+              <ExtractedDataSection data={doc.extractedData} docType={doc.type} documentId={doc.id} onSave={() => onApprove?.()} />
             )}
             {/* OCR Text */}
             {doc.ocrText && (
@@ -524,67 +657,134 @@ export default function DocumentDetailModal({
 
           {/* Bottom bar */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-[#EBEEF1]">
+            <TooltipProvider>
+              <div className="flex items-center gap-0 -ml-6">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = doc.s3Url;
+                          if (url) {
+                            window.open(url, "_blank");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                      />
+                    }
+                  >
+                    <DownloadIcon />
+                  </TooltipTrigger>
+                  <TooltipContent>Download</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                      />
+                    }
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+
+                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete document</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this document? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                      >
+                        {deleting ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                      />
+                    }
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                      <line x1="4" y1="22" x2="4" y2="15" />
+                    </svg>
+                  </TooltipTrigger>
+                  <TooltipContent>Flag for review</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                title="Download"
-                onClick={() => {
-                  const url = doc.s3Url;
-                  if (url) {
-                    window.open(url, "_blank");
+                onClick={async () => {
+                  try {
+                    await updateDocument(doc.id, { status: "rejected" });
+                    toast.success("Document rejected");
+                    onApprove?.();
+                    handleClose();
+                  } catch (err) {
+                    toast.error("Failed to reject document");
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-[#EBEEF1] rounded-lg hover:bg-red-50 transition-colors"
               >
-                <DownloadIcon />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Reject
               </button>
               <button
                 type="button"
-                title="Delete"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                disabled={approving}
+                onClick={async () => {
+                  if (!doc) return;
+                  setApproving(true);
+                  try {
+                    await updateDocument(doc.id, { status: "reviewed" });
+                    toast.success("Document approved");
+                    onApprove?.();
+                    handleClose();
+                  } catch (err) {
+                    toast.error("Failed to approve document");
+                  } finally {
+                    setApproving(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#212327] rounded-lg hover:bg-[#212327]/90 transition-colors disabled:opacity-50"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                title="Flag for review"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                  <line x1="4" y1="22" x2="4" y2="15" />
-                </svg>
+                <CheckIcon />
+                {approving ? "Approving..." : "Approve"}
               </button>
             </div>
-            <button
-              type="button"
-              disabled={approving}
-              onClick={async () => {
-                if (!doc) return;
-                setApproving(true);
-                try {
-                  await updateDocument(doc.id, { status: "reviewed" });
-                  onApprove?.();
-                  handleClose();
-                } catch (err) {
-                  console.error("Failed to approve document:", err);
-                } finally {
-                  setApproving(false);
-                }
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#212327] rounded-lg hover:bg-[#212327]/90 transition-colors disabled:opacity-50"
-            >
-              <CheckIcon />
-              {approving ? "Approving..." : "Approve"}
-            </button>
           </div>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
+

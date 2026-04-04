@@ -104,6 +104,7 @@ documentRoutes.patch("/:id", async (c) => {
     "description",
     "isVerified",
     "flags",
+    "extractedData",
   ] as const;
 
   const updates: Record<string, unknown> = {};
@@ -130,6 +131,62 @@ documentRoutes.patch("/:id", async (c) => {
   }
 
   return c.json(updated);
+});
+
+// POST /:id/reprocess — Re-run classification with existing OCR text
+documentRoutes.post("/:id/reprocess", async (c) => {
+  const id = c.req.param("id");
+
+  const [document] = await db
+    .select()
+    .from(schema.documents)
+    .where(eq(schema.documents.id, id))
+    .limit(1);
+
+  if (!document) {
+    return c.json({ error: "Document not found" }, 404);
+  }
+
+  if (!document.ocrText) {
+    return c.json({ error: "No OCR text available to reprocess" }, 400);
+  }
+
+  const { classifyDocument } = await import("../lib/openai.js");
+
+  // Update status to processing
+  await db
+    .update(schema.documents)
+    .set({ status: "processing", updatedAt: new Date() })
+    .where(eq(schema.documents.id, id));
+
+  // Re-classify in background
+  classifyDocument(document.ocrText).then(async (classification) => {
+    await db
+      .update(schema.documents)
+      .set({
+        type: classification.type,
+        description: classification.description,
+        aiSummary: classification.aiSummary,
+        extractedData: classification.extractedData,
+        flags: classification.flags,
+        status: "pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.documents.id, id));
+    console.log(`[reprocess] Document ${id} reprocessed successfully`);
+  }).catch(async (err) => {
+    console.error(`[reprocess] Failed for ${id}:`, err);
+    await db
+      .update(schema.documents)
+      .set({
+        status: "pending",
+        flags: [{ type: "warning" as const, message: "Reprocessing failed" }],
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.documents.id, id));
+  });
+
+  return c.json({ id, status: "processing" });
 });
 
 // DELETE /:id — Soft delete (move to bin)

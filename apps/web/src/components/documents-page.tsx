@@ -7,6 +7,7 @@ import DocumentDetailModal from "@/components/document-detail-modal";
 import UploadModal from "@/components/upload-modal";
 import SearchModal from "@/components/search-modal";
 import DocumentPreview from "@/components/document-preview";
+import DateRangePicker from "@/components/date-range-picker";
 
 const typeLabels: Record<string, string> = {
   all: "All",
@@ -29,6 +30,7 @@ const statusBadgeColors: Record<Document["status"], string> = {
   reviewed: "bg-gray-100 text-gray-600",
   pending: "bg-orange-100 text-orange-600",
   processing: "bg-blue-100 text-blue-600",
+  rejected: "bg-red-100 text-red-600",
   overdue: "bg-red-100 text-red-600",
   awaiting_signature: "bg-blue-100 text-blue-600",
 };
@@ -37,6 +39,7 @@ const statusLabels: Record<Document["status"], string> = {
   reviewed: "Reviewed",
   pending: "Pending",
   processing: "Processing",
+  rejected: "Rejected",
   overdue: "Overdue",
   awaiting_signature: "Awaiting Signature",
 };
@@ -347,15 +350,18 @@ function DocumentCard({
   onSelect: (doc: Document) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
+  const isProcessing = doc.status === "processing";
 
   return (
-    <div className="rounded-xl border border-[#EBEEF1] bg-white overflow-hidden">
+    <div className={`rounded-xl border border-[#EBEEF1] bg-white overflow-hidden transition-opacity ${isProcessing ? "opacity-60 pointer-events-none" : ""}`}>
       {/* Thumbnail */}
       <div
         className="relative h-[200px] bg-[#F8F8F8] flex items-center justify-center cursor-pointer overflow-hidden"
-        onClick={() => onSelect(doc)}
+        onClick={() => !isProcessing && onSelect(doc)}
       >
-        {doc.thumbnailUrl ? (
+        {isProcessing ? (
+          <div className="w-full h-full bg-gradient-to-r from-[#EBEEF1] via-[#F8F8F8] to-[#EBEEF1] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+        ) : doc.thumbnailUrl ? (
           <img
             src={doc.thumbnailUrl}
             alt={doc.description}
@@ -364,23 +370,25 @@ function DocumentCard({
         ) : (
           <DocumentIcon />
         )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu((prev) => !prev);
-          }}
-          className="absolute top-3 right-3 p-1 rounded-md hover:bg-white/80 text-[#717983]"
-        >
-          <MoreIcon />
-        </button>
+        {!isProcessing && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu((prev) => !prev);
+            }}
+            className="absolute top-3 right-3 p-1.5 rounded-md bg-white border border-[#EBEEF1] shadow-sm hover:bg-[#F8F8F8] text-[#717983]"
+          >
+            <MoreIcon />
+          </button>
+        )}
         {showMenu && <CardDropdown onClose={() => setShowMenu(false)} />}
       </div>
 
       {/* Content */}
       <div
         className="p-3.5 space-y-2.5 cursor-pointer"
-        onClick={() => onSelect(doc)}
+        onClick={() => !isProcessing && onSelect(doc)}
       >
         {/* Badges */}
         <div className="flex flex-wrap gap-1.5">
@@ -469,6 +477,8 @@ function mapApiDocToUi(apiDoc: any): Document {
 
 export default function DocumentsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<string | undefined>();
+  const [dateTo, setDateTo] = useState<string | undefined>();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({ all: 0, invoice: 0, receipt: 0, contract: 0, delivery_note: 0, bill: 0 });
   const [loading, setLoading] = useState(true);
@@ -485,6 +495,9 @@ export default function DocumentsPage() {
         setLoading(true);
         const data = await fetchDocuments({
           type: type ?? activeFilter,
+          sort: "newest",
+          dateFrom,
+          dateTo,
         });
         const mapped = (data.documents ?? []).map(mapApiDocToUi);
         setDocuments(mapped);
@@ -498,7 +511,7 @@ export default function DocumentsPage() {
         setLoading(false);
       }
     },
-    [activeFilter]
+    [activeFilter, dateFrom, dateTo]
   );
 
   // Initial load
@@ -600,28 +613,35 @@ export default function DocumentsPage() {
           })}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#555A65] bg-[#F8F8F8] rounded-lg border border-[#EBEEF1] hover:bg-[#EBEEF1] transition-colors"
-          >
-            Mar 1 &ndash; Mar 31
-            <ChevronDownIcon />
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#555A65] bg-[#F8F8F8] rounded-lg border border-[#EBEEF1] hover:bg-[#EBEEF1] transition-colors"
-          >
-            Newest first
-            <ChevronDownIcon />
-          </button>
+          <DateRangePicker
+            onChange={(range) => {
+              setDateFrom(range?.from?.toISOString());
+              setDateTo(range?.to?.toISOString());
+            }}
+          />
         </div>
       </div>
 
       {/* Document grid */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-sm text-[#717983]">Loading documents...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-xl border border-[#EBEEF1] bg-white overflow-hidden">
+                <div className="h-[200px] bg-gradient-to-r from-[#EBEEF1] via-[#F8F8F8] to-[#EBEEF1] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+                <div className="p-3.5 space-y-2.5">
+                  <div className="flex gap-1.5">
+                    <div className="h-5 w-16 bg-[#EBEEF1] rounded-full animate-pulse" />
+                    <div className="h-5 w-14 bg-[#EBEEF1] rounded-full animate-pulse" />
+                  </div>
+                  <div className="h-4 w-3/4 bg-[#EBEEF1] rounded animate-pulse" />
+                  <div className="flex justify-between">
+                    <div className="h-3 w-20 bg-[#EBEEF1] rounded animate-pulse" />
+                    <div className="h-6 w-16 bg-[#EBEEF1] rounded-full animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

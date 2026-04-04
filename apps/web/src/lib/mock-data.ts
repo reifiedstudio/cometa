@@ -5,6 +5,7 @@ export interface Document {
     | "reviewed"
     | "pending"
     | "processing"
+    | "rejected"
     | "overdue"
     | "awaiting_signature";
   flags: ("verified" | "duplicate")[];
