@@ -262,7 +262,7 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete }: Uploa
             <p className="text-sm text-[#717983]">
               Or email documents to{" "}
               <span className="font-medium text-[#555A65]">
-                docs@yourcompany.co.za
+                docs@daniellourie.me
               </span>
             </p>
           </div>

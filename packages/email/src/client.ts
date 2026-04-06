@@ -19,7 +19,7 @@ export async function sendEmail({
   }
 
   const { data, error } = await resend.emails.send({
-    from: "Cometa <notifications@cometa.co>",
+    from: process.env.EMAIL_FROM ?? "Cometa <docs@daniellourie.me>",
     to,
     subject,
     react,

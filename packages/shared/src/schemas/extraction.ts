@@ -92,7 +92,7 @@ export const extractionSchemas = {
   bill: billExtractedDataSchema,
 } as const;
 
-export type DocumentType = keyof typeof extractionSchemas;
+export type ExtractableDocumentType = keyof typeof extractionSchemas;
 
 export type ReceiptData = z.infer<typeof receiptExtractedDataSchema>;
 export type InvoiceData = z.infer<typeof invoiceExtractedDataSchema>;
@@ -122,7 +122,7 @@ export interface TypeDisplayConfig {
   itemColumns?: ItemColumnConfig[];
 }
 
-export const displayConfig: Record<DocumentType, TypeDisplayConfig> = {
+export const displayConfig: Record<ExtractableDocumentType, TypeDisplayConfig> = {
   receipt: {
     fields: [
       { key: "supplier", label: "Supplier" },

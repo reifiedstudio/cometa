@@ -86,7 +86,7 @@
 module "documents_bucket" {
   source = "github.com/reifiedstudio/terraform-modules//modules/s3?ref=s3/v0.1.0"
 
-  bucket_name        = "${local.name_prefix}-documents"
+  bucket_name        = "${local.name_prefix}-${local.region_short}-documents"
   versioning_enabled = true
 
   cors_rules = [
@@ -145,6 +145,113 @@ resource "aws_iam_policy" "textract_s3_access" {
 resource "aws_iam_role_policy_attachment" "textract_s3" {
   role       = aws_iam_role.textract_service.name
   policy_arn = aws_iam_policy.textract_s3_access.arn
+}
+
+# ──────────────────────────────────────────────
+# S3 — Lambda Artifacts
+# ──────────────────────────────────────────────
+
+module "artifacts_bucket" {
+  source = "github.com/reifiedstudio/terraform-modules//modules/s3?ref=s3/v0.1.0"
+
+  bucket_name        = "${local.name_prefix}-${local.region_short}-artifacts"
+  versioning_enabled = true
+
+  tags = local.common_tags
+}
+
+# ──────────────────────────────────────────────
+# Lambda — Gateway (REST API + MCP Server)
+# ──────────────────────────────────────────────
+
+module "gateway_lambda" {
+  source = "github.com/reifiedstudio/terraform-modules//modules/lambda?ref=lambda/v0.1.0"
+
+  function_name = "${local.name_prefix}-gateway"
+  description   = "Cometa gateway — REST API and MCP server"
+
+  artifact_bucket_name = module.artifacts_bucket.bucket_id
+  code_s3_key          = "gateway/gateway.zip"
+
+  runtime         = "nodejs22.x"
+  handler         = "index.handler"
+  architectures   = ["arm64"]
+  memory_mb       = 512
+  timeout_seconds = 30
+
+  environment = merge(local.gateway_secrets, {
+    NODE_ENV    = var.environment
+    S3_BUCKET   = module.documents_bucket.bucket_id
+    CORS_ORIGIN = "https://${var.root_domain}"
+  })
+
+  exec_inline_policy_json = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "S3DocumentAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          module.documents_bucket.bucket_arn,
+          "${module.documents_bucket.bucket_arn}/*"
+        ]
+      },
+      {
+        Sid    = "TextractAccess"
+        Effect = "Allow"
+        Action = [
+          "textract:StartDocumentTextDetection",
+          "textract:GetDocumentTextDetection",
+          "textract:DetectDocumentText"
+        ]
+        Resource = ["*"]
+      },
+      {
+        Sid    = "PassTextractRole"
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [aws_iam_role.textract_service.arn]
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Public HTTPS URL for the Lambda (no API Gateway needed)
+resource "aws_lambda_function_url" "gateway" {
+  function_name      = module.gateway_lambda.function_name
+  authorization_type = "NONE" # OAuth handled in app code
+
+  cors {
+    allow_origins     = ["*"]
+    allow_methods     = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    allow_headers     = ["Content-Type", "Authorization", "Accept", "Mcp-Session-Id", "MCP-Protocol-Version"]
+    expose_headers    = ["Mcp-Session-Id"]
+    max_age           = 3600
+    allow_credentials = false
+  }
+}
+
+resource "aws_lambda_permission" "gateway_public_url" {
+  statement_id           = "AllowPublicFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = module.gateway_lambda.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "gateway_public_invoke" {
+  statement_id  = "AllowPublicInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.gateway_lambda.function_name
+  principal     = "*"
 }
 
 # ──────────────────────────────────────────────

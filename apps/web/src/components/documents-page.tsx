@@ -1,170 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Upload, FileText, MoreVertical, ChevronDown, Check, Download, PenLine, Copy, Trash2 } from "lucide-react";
 import { type Document } from "@/lib/mock-data";
 import { fetchDocuments, updateDocument, API_URL } from "@/lib/api";
+import { typeLabels, typePluralLabels, typeBadgeColors, statusBadgeColors, statusLabels, flagBadgeColors, flagLabels } from "@/lib/document-labels";
+import { PageHeader } from "@/components/ui/page-header";
+import { SearchInput } from "@/components/ui/search-input";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import DocumentDetailModal from "@/components/document-detail-modal";
 import UploadModal from "@/components/upload-modal";
 import SearchModal from "@/components/search-modal";
 import DocumentPreview from "@/components/document-preview";
 import DateRangePicker from "@/components/date-range-picker";
 import DocumentList from "@/components/document-list";
-
-const typeLabels: Record<string, string> = {
-  all: "All",
-  invoice: "Invoices",
-  receipt: "Receipts",
-  contract: "Contracts",
-  delivery_note: "Delivery Notes",
-  bill: "Bills",
-};
-
-const typeBadgeColors: Record<Document["type"], string> = {
-  invoice: "bg-orange-100 text-orange-700",
-  receipt: "bg-emerald-100 text-emerald-700",
-  contract: "bg-blue-100 text-blue-700",
-  delivery_note: "bg-red-100 text-red-700",
-  bill: "bg-sky-100 text-sky-700",
-};
-
-const statusBadgeColors: Record<Document["status"], string> = {
-  reviewed: "bg-gray-100 text-gray-600",
-  pending: "bg-orange-100 text-orange-600",
-  processing: "bg-blue-100 text-blue-600",
-  rejected: "bg-red-100 text-red-600",
-  overdue: "bg-red-100 text-red-600",
-  awaiting_signature: "bg-blue-100 text-blue-600",
-};
-
-const statusLabels: Record<Document["status"], string> = {
-  reviewed: "Reviewed",
-  pending: "Pending",
-  processing: "Processing",
-  rejected: "Rejected",
-  overdue: "Overdue",
-  awaiting_signature: "Awaiting Signature",
-};
-
-const flagBadgeColors: Record<string, string> = {
-  verified: "bg-emerald-100 text-emerald-600",
-  duplicate: "bg-red-100 text-red-600",
-};
-
-const flagLabels: Record<string, string> = {
-  verified: "Verified",
-  duplicate: "Dup",
-};
-
-function SearchIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function UploadIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#717983"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
-    </svg>
-  );
-}
-
-function MoreIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="5" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="12" cy="19" r="1" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function CheckIcon({ approved }: { approved: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={approved ? "#16a34a" : "#c4c9d1"}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 function ApproveButton({ documentId, approved: initialApproved }: { documentId: string; approved: boolean }) {
   const [approved, setApproved] = useState(initialApproved);
@@ -202,93 +52,9 @@ function ApproveButton({ documentId, approved: initialApproved }: { documentId: 
           : "bg-white border-[#EBEEF1] text-[#717983] hover:border-[#c4c9d1]"
       } ${loading ? "opacity-50" : ""}`}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
+      <Check size={12} strokeWidth={3} />
       {approved ? "Approved" : "Approve"}
     </button>
-  );
-}
-
-function DownloadSmallIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-}
-
-function PenIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
   );
 }
 
@@ -314,21 +80,21 @@ function CardDropdown({ onClose }: { onClose: () => void }) {
         type="button"
         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#555A65] hover:bg-[#F8F8F8] transition-colors"
       >
-        <DownloadSmallIcon />
+        <Download size={14} />
         Download original
       </button>
       <button
         type="button"
         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#555A65] hover:bg-[#F8F8F8] transition-colors"
       >
-        <PenIcon />
+        <PenLine size={14} />
         Send for signing
       </button>
       <button
         type="button"
         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#555A65] hover:bg-[#F8F8F8] transition-colors"
       >
-        <CopyIcon />
+        <Copy size={14} />
         Mark as duplicate
       </button>
       <div className="my-1.5 border-t border-[#EBEEF1]" />
@@ -336,7 +102,7 @@ function CardDropdown({ onClose }: { onClose: () => void }) {
         type="button"
         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"
       >
-        <TrashIcon />
+        <Trash2 size={14} />
         Move to bin
       </button>
     </div>
@@ -369,7 +135,7 @@ function DocumentRow({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[#717983]">
-            <DocumentIcon />
+            <FileText size={20} className="text-[#717983]" />
           </div>
         )}
       </div>
@@ -453,6 +219,7 @@ function mapApiDocToUi(apiDoc: any): Document {
 }
 
 export default function DocumentsPage() {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
   const [dateTo, setDateTo] = useState<string | undefined>();
@@ -521,8 +288,7 @@ export default function DocumentsPage() {
       : documents.filter((d) => d.type === activeFilter);
 
   function handleSelectDocument(doc: Document) {
-    setSelectedDocument(doc);
-    setIsDetailOpen(true);
+    router.push(`/documents/${doc.id}`);
   }
 
   function handleRefresh() {
@@ -532,63 +298,25 @@ export default function DocumentsPage() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-8 py-5 border-b border-[#EBEEF1]">
-        <h1 className="text-xl font-semibold text-[#212327]">Documents</h1>
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#717983]">
-              <SearchIcon />
-            </div>
-            <input
-              type="text"
-              placeholder="Search documents..."
-              readOnly
-              onClick={() => setIsSearchOpen(true)}
-              className="pl-9 pr-14 py-2 w-64 text-sm rounded-lg border border-[#EBEEF1] bg-white text-[#212327] placeholder:text-[#717983] focus:outline-none focus:ring-2 focus:ring-[#D09305]/30 focus:border-[#D09305] cursor-pointer"
-            />
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-              <kbd className="px-1.5 py-0.5 text-[10px] font-medium text-[#717983] bg-[#F8F8F8] border border-[#EBEEF1] rounded">
-                ⌘K
-              </kbd>
-            </div>
-          </div>
-          {/* Upload button */}
-          <button
-            type="button"
-            onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#212327] rounded-lg hover:bg-[#212327]/90 transition-colors"
-          >
-            <UploadIcon />
-            Upload
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Documents" icon={<FileText size={20} />}>
+        <SearchInput onClick={() => setIsSearchOpen(true)} />
+        <button
+          type="button"
+          onClick={() => setIsUploadOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#212327] rounded-lg hover:bg-[#212327]/90 transition-colors"
+        >
+          <Upload size={16} />
+          Upload
+        </button>
+      </PageHeader>
 
       {/* Filters row */}
       <div className="flex items-center justify-between px-8 py-3 border-b border-[#EBEEF1]">
-        <div className="flex items-center gap-2">
-          {filterKeys.map((key) => {
-            const isActive = activeFilter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleFilterChange(key)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                  isActive
-                    ? "bg-[#212327] text-white"
-                    : "bg-[#F8F8F8] text-[#555A65] hover:bg-[#EBEEF1]"
-                }`}
-              >
-                {typeLabels[key]}{" "}
-                <span className={isActive ? "text-white/70" : "text-[#717983]"}>
-                  {counts[key] ?? 0}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <FilterTabs
+          activeKey={activeFilter}
+          onChange={handleFilterChange}
+          tabs={filterKeys.map(key => ({ key, label: typePluralLabels[key] ?? key, count: counts[key] ?? 0 }))}
+        />
         <div className="flex items-center gap-2">
           <DateRangePicker
             onChange={(range) => {

@@ -1,85 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, ArrowRight, Sparkles } from "lucide-react";
 import { documents as mockDocuments, type Document } from "@/lib/mock-data";
 import { searchDocuments } from "@/lib/api";
-
-const typeLabels: Record<string, string> = {
-  all: "All",
-  invoice: "Invoices",
-  receipt: "Receipts",
-  contract: "Contracts",
-  delivery_note: "Delivery Notes",
-};
-
-const typeBadgeColors: Record<Document["type"], string> = {
-  invoice: "bg-orange-100 text-orange-700",
-  receipt: "bg-emerald-100 text-emerald-700",
-  contract: "bg-blue-100 text-blue-700",
-  delivery_note: "bg-red-100 text-red-700",
-  bill: "bg-sky-100 text-sky-700",
-};
-
-const typeDisplayLabels: Record<Document["type"], string> = {
-  invoice: "Invoice",
-  receipt: "Receipt",
-  contract: "Contract",
-  delivery_note: "Delivery Note",
-  bill: "Bill",
-};
-
-function SearchIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <polyline points="12 5 19 12 12 19" />
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#D09305"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
-    </svg>
-  );
-}
+import {
+  typePluralLabels,
+  typeLabels,
+  typeBadgeColors,
+} from "@/lib/document-labels";
+import { FilterTabs } from "@/components/ui/filter-tabs";
+import { TypeBadge } from "@/components/ui/type-badge";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -200,7 +131,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   if (!isOpen) return null;
 
-  const filterKeys = Object.keys(typeLabels);
+  const filterTabs = Object.entries(typePluralLabels).map(([key, label]) => ({
+    key,
+    label,
+  }));
 
   const filtered = results;
 
@@ -217,7 +151,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         {/* Search input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-[#EBEEF1]">
           <div className="text-[#717983]">
-            <SearchIcon />
+            <Search size={20} />
           </div>
           <input
             type="text"
@@ -236,24 +170,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex items-center gap-1.5 px-5 py-3 border-b border-[#EBEEF1]">
-          {filterKeys.map((key) => {
-            const isActive = activeFilter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveFilter(key)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                  isActive
-                    ? "bg-[#212327] text-white"
-                    : "bg-[#F8F8F8] text-[#555A65] hover:bg-[#EBEEF1]"
-                }`}
-              >
-                {typeLabels[key]}
-              </button>
-            );
-          })}
+        <div className="px-5 py-3 border-b border-[#EBEEF1]">
+          <FilterTabs
+            tabs={filterTabs}
+            activeKey={activeFilter}
+            onChange={setActiveFilter}
+            className="gap-1.5"
+          />
         </div>
 
         {/* Results */}
@@ -289,13 +212,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <p className="text-xs text-[#717983] mt-0.5">{doc.date}</p>
                   </div>
                   <div className="flex items-center gap-2.5 ml-4 shrink-0">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${typeBadgeColors[doc.type]}`}
-                    >
-                      {typeDisplayLabels[doc.type]}
-                    </span>
+                    <TypeBadge type={doc.type} />
                     <span className="text-[#717983]">
-                      <ArrowRightIcon />
+                      <ArrowRight size={16} />
                     </span>
                   </div>
                 </button>
@@ -311,7 +230,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </span>
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#FFFBEB] text-[#D09305] border border-[#FDE68A]">
-              <SparkleIcon />
+              <Sparkles size={14} stroke="#D09305" />
               AI-powered search
             </span>
             <button
@@ -319,7 +238,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#212327] rounded-lg hover:bg-[#212327]/90 transition-colors"
             >
               Search
-              <ArrowRightIcon />
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>

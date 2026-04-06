@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Document } from "@/lib/mock-data";
 import { updateDocument, deleteDocument, reprocessDocument, API_URL } from "@/lib/api";
 import { toast } from "sonner";
+import SignatureModal from "@/components/signature-modal";
+import SignatureStatus from "@/components/signature-status";
 import { displayConfig as displayConfigs } from "@cometa/shared";
 import {
   AlertDialog,
@@ -422,6 +424,8 @@ export default function DocumentDetailModal({
   const [closing, setClosing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureStatusKey, setSignatureStatusKey] = useState(0);
 
   const handleClose = useCallback(() => {
     setClosing(true);
@@ -499,7 +503,8 @@ export default function DocumentDetailModal({
           <div className="flex items-center gap-2">
             <Select
               value={doc.type}
-              onValueChange={async (newType: string) => {
+              onValueChange={async (newType) => {
+                if (!newType) return;
                 try {
                   await updateDocument(doc.id, { type: newType as Document["type"] });
                   toast.success("Document type updated");
@@ -621,6 +626,9 @@ export default function DocumentDetailModal({
             {doc.extractedData && Object.keys(doc.extractedData).length > 0 && (
               <ExtractedDataSection data={doc.extractedData} docType={doc.type} documentId={doc.id} onSave={() => onApprove?.()} />
             )}
+            {/* Signature Status */}
+            <SignatureStatus key={signatureStatusKey} documentId={doc.id} />
+
             {/* OCR Text */}
             {doc.ocrText && (
               <div className="space-y-2.5">
@@ -734,6 +742,24 @@ export default function DocumentDetailModal({
                   </TooltipTrigger>
                   <TooltipContent>Flag for review</TooltipContent>
                 </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => setShowSignatureModal(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#555A65] hover:bg-[#F8F8F8] rounded-lg transition-colors"
+                      />
+                    }
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </TooltipTrigger>
+                  <TooltipContent>Send for Signature</TooltipContent>
+                </Tooltip>
               </div>
             </TooltipProvider>
             <div className="flex items-center gap-2">
@@ -784,7 +810,17 @@ export default function DocumentDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Signature Modal */}
+      <SignatureModal
+        documentId={doc.id}
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onSuccess={() => {
+          setSignatureStatusKey((k) => k + 1);
+          onApprove?.();
+        }}
+      />
     </div>
   );
 }
-

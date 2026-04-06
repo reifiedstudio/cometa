@@ -1,6 +1,15 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import { API_URL } from "@/lib/api";
+import {
+  typeBadgeColors,
+  typeLabels,
+  statusBadgeColors,
+  statusLabels,
+} from "@/lib/document-labels";
+import { SkeletonList } from "@/components/ui/skeleton-list";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export interface DocumentListItem {
   id: string;
@@ -11,40 +20,6 @@ export interface DocumentListItem {
   date: string;
   thumbnailUrl?: string;
 }
-
-const typeBadgeColors: Record<string, string> = {
-  invoice: "bg-orange-50 text-orange-600",
-  receipt: "bg-emerald-50 text-emerald-600",
-  contract: "bg-blue-50 text-blue-600",
-  delivery_note: "bg-red-50 text-red-600",
-  bill: "bg-sky-50 text-sky-600",
-};
-
-const typeLabels: Record<string, string> = {
-  invoice: "Invoice",
-  receipt: "Receipt",
-  contract: "Contract",
-  delivery_note: "Delivery Note",
-  bill: "Bill",
-};
-
-const statusBadgeColors: Record<string, string> = {
-  reviewed: "text-gray-500",
-  pending: "text-orange-500",
-  processing: "text-blue-500",
-  rejected: "text-red-500",
-  overdue: "text-red-500",
-  awaiting_signature: "text-blue-500",
-};
-
-const statusLabels: Record<string, string> = {
-  reviewed: "Reviewed",
-  pending: "Pending",
-  processing: "Processing",
-  rejected: "Rejected",
-  overdue: "Overdue",
-  awaiting_signature: "Awaiting Signature",
-};
 
 interface DocumentListProps {
   documents: DocumentListItem[];
@@ -62,31 +37,15 @@ export default function DocumentList({
   actions,
 }: DocumentListProps) {
   if (loading) {
-    return (
-      <div>
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="flex items-center gap-3 px-3 py-3 border-b border-[#F0F0F0]">
-            <div className="w-9 h-9 rounded-md bg-gradient-to-r from-[#EBEEF1] via-[#F8F8F8] to-[#EBEEF1] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] flex-shrink-0" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-48 bg-[#EBEEF1] rounded animate-pulse" />
-              <div className="h-3 w-24 bg-[#EBEEF1] rounded animate-pulse" />
-            </div>
-            <div className="h-3 w-16 bg-[#EBEEF1] rounded animate-pulse" />
-          </div>
-        ))}
-      </div>
-    );
+    return <SkeletonList />;
   }
 
   if (documents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-[#717983]">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
-        <p className="mt-3 text-sm">{emptyMessage}</p>
-      </div>
+      <EmptyState
+        icon={<FileText size={48} strokeWidth={1} />}
+        message={emptyMessage}
+      />
     );
   }
 
@@ -119,11 +78,8 @@ export default function DocumentList({
               ) : thumbSrc ? (
                 <img src={thumbSrc} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#C4C9D1]">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
+                <div className="w-full h-full flex items-center justify-center">
+                  <FileText size={16} className="text-[#C4C9D1]" />
                 </div>
               )}
             </div>

@@ -18,6 +18,21 @@ output "textract_service_role_arn" {
   value       = aws_iam_role.textract_service.arn
 }
 
+output "artifacts_bucket" {
+  description = "S3 bucket for Lambda deployment artifacts"
+  value       = module.artifacts_bucket.bucket_id
+}
+
+output "gateway_url" {
+  description = "Public HTTPS URL for the gateway Lambda"
+  value       = aws_lambda_function_url.gateway.function_url
+}
+
+output "gateway_mcp_url" {
+  description = "MCP endpoint URL — paste this into Claude Cowork"
+  value       = "${aws_lambda_function_url.gateway.function_url}mcp"
+}
+
 # output "alb_dns_name" {
 #   description = "ALB DNS name"
 #   value       = module.alb.alb_dns_name

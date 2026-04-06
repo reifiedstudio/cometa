@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const documentTypeEnum = pgEnum("document_type", [
   "invoice", "receipt", "contract", "delivery_note", "bill"
@@ -10,6 +10,14 @@ export const documentStatusEnum = pgEnum("document_status", [
 
 export const documentSourceEnum = pgEnum("document_source", [
   "upload", "email"
+]);
+
+export const signatureRequestStatusEnum = pgEnum("signature_request_status", [
+  "pending", "partially_signed", "completed", "expired", "cancelled"
+]);
+
+export const signerStatusEnum = pgEnum("signer_status", [
+  "pending", "viewed", "signed", "declined", "expired"
 ]);
 
 export const documents = pgTable("documents", {
@@ -49,6 +57,43 @@ export const documents = pgTable("documents", {
 
   // Timestamps
   receivedAt: timestamp("received_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Signature Requests ──
+
+export const signatureRequests = pgTable("signature_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id").notNull().references(() => documents.id),
+  status: signatureRequestStatusEnum("status").default("pending").notNull(),
+  message: text("message"), // optional message to signers
+  requestedBy: text("requested_by").notNull(), // Clerk user ID
+  requestedByEmail: text("requested_by_email").notNull(),
+  documentHash: text("document_hash").notNull(), // SHA-256 of doc at time of request
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Signers (one per email per request) ──
+
+export const signers = pgTable("signers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requestId: uuid("request_id").notNull().references(() => signatureRequests.id),
+  email: text("email").notNull(),
+  name: text("name"), // filled in when they sign
+  token: varchar("token", { length: 64 }).notNull().unique(), // magic link token
+  otpCode: varchar("otp_code", { length: 6 }),
+  otpExpiresAt: timestamp("otp_expires_at"),
+  status: signerStatusEnum("status").default("pending").notNull(),
+  order: integer("order").default(0).notNull(), // signing order (0 = any order)
+
+  // Audit trail (filled on sign)
+  signedAt: timestamp("signed_at"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

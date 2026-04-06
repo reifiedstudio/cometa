@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function getFileUrl(s3Key: string) {
   return `${API_URL}/api/files/${s3Key}`;
@@ -64,7 +64,7 @@ function PdfPreview({ s3Key }: { s3Key: string }) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
       if (!cancelled) setLoaded(true);
     }
 

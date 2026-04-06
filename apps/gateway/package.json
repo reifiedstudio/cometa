@@ -1,0 +1,24 @@
+{
+  "name": "@cometa/gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.20.0",
+    "@cometa/db": "*",
+    "@cometa/shared": "*",
+    "@hono/mcp": "^0.1.0",
+    "@hono/zod-validator": "^0.7.6",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@scalar/hono-api-reference": "^0.5.0",
+    "drizzle-orm": "^0.38.0",
+    "hono": "^4.6.0",
+    "hono-openapi": "^0.4.0",
+    "zod": "^4.3.6",
+    "zod-openapi": "^4.2.0"
+  }
+}
