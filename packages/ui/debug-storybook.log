@@ -1,0 +1,19 @@
+[19:34:04.233] [INFO] storybook v10.3.4
+[19:34:08.511] [DEBUG] Getting package.json info for /Users/daniellourie/Projects/cometa/packages/ui/package.json...
+[19:34:10.573] [INFO] Starting...
+[19:34:11.103] [DEBUG] Starting preview..
+[19:34:11.153] [DEBUG] Using tsconfig paths for react-docgen
+[19:34:11.153] [ERROR] Failed to build the preview
+[19:34:11.157] [ERROR] [38;2;241;97;97mReferenceError: __dirname is not defined[39m
+    at Object.viteFinal (file://./.storybook/main.ts:15:27)
+    at file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/_node-chunks/chunk-3LP2BDDH.js:10114:36
+    at async createViteServer (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/@storybook+builder-vite@10.3.4+cf3c36fb3be3be79/node_modules/@storybook/builder-vite/dist/index.js:1532:21)
+    at async Module.start (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/@storybook+builder-vite@10.3.4+cf3c36fb3be3be79/node_modules/@storybook/builder-vite/dist/index.js:1557:17)
+    at async storybookDevServer (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/core-server/index.js:7503:83)
+    at async buildOrThrow (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/core-server/index.js:4508:12)
+    at async buildDevStandalone (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/core-server/index.js:8033:41)
+    at async withTelemetry (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/_node-chunks/chunk-HUYNFPPD.js:225:12)
+    at async dev (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/bin/core.js:2736:3)
+    at async _Command.<anonymous> (file:///Users/daniellourie/Projects/cometa/node_modules/.bun/storybook@10.3.4+4d677f0110fc5e6b/node_modules/storybook/dist/bin/core.js:2806:92)
+[19:34:11.166] [WARN] Broken build, fix the error above.
+You may need to refresh the browser.

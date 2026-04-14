@@ -1,0 +1,16 @@
+{
+  "name": "@cometa/task-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format cjs"
+  },
+  "dependencies": {
+    "@cometa/service-core": "*",
+    "@cometa/agents-sdk": "workspace:*",
+    "@aws-sdk/util-dynamodb": "^3.600.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0"
+  }
+}

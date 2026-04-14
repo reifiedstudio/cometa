@@ -1,0 +1,15 @@
+{
+  "name": "@cometa/agents",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "deploy": "bun run src/deploy.ts",
+    "seed": "bun run src/seed.ts"
+  },
+  "dependencies": {
+    "@cometa/agents-sdk": "workspace:*",
+    "@cometa/agent-accounting": "workspace:*",
+    "@cometa/agent-legal": "workspace:*"
+  }
+}

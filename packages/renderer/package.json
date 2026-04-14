@@ -1,0 +1,31 @@
+{
+  "name": "@cometa/renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./templates": "./src/templates/index.ts"
+  },
+  "scripts": {
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@cometa/ui": "workspace:*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "3.8.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@storybook/react": "^10.3.4",
+    "@storybook/react-vite": "^10.3.4",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "storybook": "^10.3.4",
+    "tailwindcss": "^4.1.0"
+  }
+}

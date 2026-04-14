@@ -26,6 +26,19 @@
     },
     "db:migrate": {
       "cache": false
+    },
+    "deploy": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": [
+        "ANTHROPIC_API_KEY",
+        "NAME_PREFIX",
+        "AWS_REGION",
+        "AWS_PROFILE",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ]
     }
   }
 }

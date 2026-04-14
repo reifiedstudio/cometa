@@ -1,0 +1,7 @@
+{
+  "name": "@cometa/agents-workspace",
+  "private": true,
+  "scripts": {
+    "deploy": "bun run deploy.ts"
+  }
+}

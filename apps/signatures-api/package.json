@@ -1,0 +1,26 @@
+{
+  "name": "@cometa/signatures-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/lambda.ts --outdir dist --target node --minify",
+    "start": "bun dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1024.0",
+    "@aws-sdk/s3-request-presigner": "^3.1024.0",
+    "@clerk/backend": "^1.20.0",
+    "@cometa/auth": "*",
+    "@cometa/db": "*",
+    "@cometa/shared": "*",
+    "drizzle-orm": "^0.45.2",
+    "@cometa/email": "*",
+    "@hono/mcp": "^0.2.5",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@scalar/hono-api-reference": "^0.5.184",
+    "hono": "^4.12.12",
+    "hono-openapi": "^0.4.0",
+    "zod": "^4.3.6"
+  }
+}

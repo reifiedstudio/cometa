@@ -10,25 +10,53 @@
 import { Hono } from "hono";
 import type { GatewayEnv } from "../lib/types.js";
 import {
-  registerClient,
-  getClient,
-  createAuthCode,
   consumeAuthCode,
-  createAccessToken,
-  createPendingAuth,
-  getPendingAuth,
   consumePendingAuth,
+  createAccessToken,
+  createAuthCode,
+  createPendingAuth,
+  getClient,
+  getLatestPendingAuth,
+  getPendingAuth,
+  registerClient,
 } from "./store.js";
 
 const CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
-function getIssuerUrl(c: { req: { url: string } }): string {
+function getIssuerUrl(c: {
+  req: { url: string; header: (name: string) => string | undefined };
+}): string {
+  // CloudFront doesn't forward Host (Lambda rejects it), but we whitelist
+  // X-Forwarded-Host in the origin request policy so we can recover the real domain.
+  // CloudFront sends the real domain via a custom origin header
+  const customDomain = c.req.header("x-custom-domain");
+  if (customDomain) {
+    return `https://${customDomain}`;
+  }
   const url = new URL(c.req.url);
   return `${url.protocol}//${url.host}`;
 }
 
 export function createOAuthRoutes(): Hono<GatewayEnv> {
   const oauth = new Hono<GatewayEnv>();
+
+  // ── Clerk dev-mode root redirect ──
+  // Clerk's "Fallback development host" redirects to "/" instead of preserving
+  // the redirect_url path. Catch that and forward to the real callback.
+  oauth.get("/", async (c) => {
+    const clerkJwt = c.req.query("__clerk_db_jwt");
+    if (!clerkJwt) {
+      return c.json({ name: "cometa-gateway", status: "ok" });
+    }
+    // Find the most recent pending OAuth flow
+    const pending = await getLatestPendingAuth();
+    if (!pending) {
+      return c.text("No pending authorization session found. Please retry connecting.", 400);
+    }
+    // Redirect to the real callback with the oauth_state
+    const issuer = getIssuerUrl(c);
+    return c.redirect(`${issuer}/oauth/clerk-callback?oauth_state=${pending.id}`);
+  });
 
   // ── RFC 9728: Protected Resource Metadata ──
   oauth.get("/.well-known/oauth-protected-resource", (c) => {
@@ -60,11 +88,18 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
   oauth.post("/oauth/register", async (c) => {
     const body = await c.req.json();
 
-    if (!body.redirect_uris || !Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
-      return c.json({ error: "invalid_client_metadata", error_description: "redirect_uris required" }, 400);
+    if (
+      !body.redirect_uris ||
+      !Array.isArray(body.redirect_uris) ||
+      body.redirect_uris.length === 0
+    ) {
+      return c.json(
+        { error: "invalid_client_metadata", error_description: "redirect_uris required" },
+        400,
+      );
     }
 
-    const client = registerClient({
+    const client = await registerClient({
       redirect_uris: body.redirect_uris,
       client_name: body.client_name,
       grant_types: body.grant_types,
@@ -72,24 +107,27 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
       token_endpoint_auth_method: body.token_endpoint_auth_method,
     });
 
-    return c.json({
-      client_id: client.client_id,
-      client_secret: client.client_secret,
-      client_name: client.client_name,
-      redirect_uris: client.redirect_uris,
-      grant_types: client.grant_types,
-      response_types: client.response_types,
-      token_endpoint_auth_method: client.token_endpoint_auth_method,
-      client_id_issued_at: client.registered_at,
-      client_secret_expires_at: 0, // never expires
-    }, 201);
+    return c.json(
+      {
+        client_id: client.client_id,
+        client_secret: client.client_secret,
+        client_name: client.client_name,
+        redirect_uris: client.redirect_uris,
+        grant_types: client.grant_types,
+        response_types: client.response_types,
+        token_endpoint_auth_method: client.token_endpoint_auth_method,
+        client_id_issued_at: client.registered_at,
+        client_secret_expires_at: 0, // never expires
+      },
+      201,
+    );
   });
 
   // ── Authorization Endpoint ──
   // Stores OAuth params and redirects to Clerk's hosted sign-in.
   // After sign-in, Clerk redirects back to /oauth/clerk-callback which
   // exchanges the session for an auth code.
-  oauth.get("/oauth/authorize", (c) => {
+  oauth.get("/oauth/authorize", async (c) => {
     const clientId = c.req.query("client_id");
     const redirectUri = c.req.query("redirect_uri");
     const state = c.req.query("state");
@@ -97,20 +135,26 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
     const codeChallengeMethod = c.req.query("code_challenge_method") ?? "S256";
 
     if (!clientId || !redirectUri || !codeChallenge) {
-      return c.json({ error: "invalid_request", error_description: "Missing required parameters" }, 400);
+      return c.json(
+        { error: "invalid_request", error_description: "Missing required parameters" },
+        400,
+      );
     }
 
-    const client = getClient(clientId);
+    const client = await getClient(clientId);
     if (!client) {
       return c.json({ error: "invalid_client", error_description: "Client not found" }, 400);
     }
 
     if (!client.redirect_uris.includes(redirectUri)) {
-      return c.json({ error: "invalid_request", error_description: "Redirect URI not registered" }, 400);
+      return c.json(
+        { error: "invalid_request", error_description: "Redirect URI not registered" },
+        400,
+      );
     }
 
     // Store the OAuth params so we can retrieve them after Clerk sign-in
-    const oauthState = createPendingAuth({
+    const oauthState = await createPendingAuth({
       clientId,
       redirectUri,
       codeChallenge,
@@ -143,7 +187,7 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
       return c.text("Missing oauth_state parameter", 400);
     }
 
-    const pending = getPendingAuth(oauthStateId);
+    const pending = await getPendingAuth(oauthStateId);
     if (!pending) {
       return c.text("Invalid or expired authorization session", 400);
     }
@@ -185,15 +229,26 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
   oauth.post("/oauth/complete", async (c) => {
     const body = await c.req.json();
     const { session_token, oauth_state } = body;
+    console.log(
+      "[oauth/complete] received oauth_state:",
+      oauth_state,
+      "has token:",
+      !!session_token,
+    );
 
     if (!session_token || !oauth_state) {
       return c.json({ error: "invalid_request" }, 400);
     }
 
-    const pending = consumePendingAuth(oauth_state);
+    const pending = await consumePendingAuth(oauth_state);
     if (!pending) {
-      return c.json({ error: "invalid_request", error_description: "Invalid or expired session" }, 400);
+      console.log("[oauth/complete] pending auth not found or expired");
+      return c.json(
+        { error: "invalid_request", error_description: "Invalid or expired session" },
+        400,
+      );
     }
+    console.log("[oauth/complete] found pending auth for client:", pending.clientId);
 
     let userId: string;
     let userEmail: string;
@@ -205,14 +260,15 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
         secretKey: process.env.CLERK_SECRET_KEY!,
       });
       userId = payload.sub;
-      userEmail = (payload as Record<string, unknown>).email as string ?? "";
-      userRole = (payload as Record<string, unknown>).role as string ?? "member";
+      userEmail = ((payload as Record<string, unknown>).email as string) ?? "";
+      userRole = ((payload as Record<string, unknown>).role as string) ?? "member";
     } catch (err) {
-      console.error("Token verification failed:", err);
+      console.error("[oauth/complete] Token verification failed:", err);
       return c.json({ error: "invalid_grant", error_description: "Invalid session token" }, 400);
     }
+    console.log("[oauth/complete] verified user:", userId, userEmail);
 
-    const code = createAuthCode({
+    const code = await createAuthCode({
       clientId: pending.clientId,
       redirectUri: pending.redirectUri,
       codeChallenge: pending.codeChallenge,
@@ -227,11 +283,13 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
     redirectUrl.searchParams.set("code", code);
     if (pending.state) redirectUrl.searchParams.set("state", pending.state);
 
+    console.log("[oauth/complete] redirecting to:", redirectUrl.toString().substring(0, 80));
     return c.json({ redirect_to: redirectUrl.toString() });
   });
 
   // ── Token Endpoint ──
   oauth.post("/oauth/token", async (c) => {
+    console.log("[oauth/token] received token request");
     const body = await c.req.parseBody();
     const grantType = body.grant_type as string;
 
@@ -244,18 +302,26 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
     const codeVerifier = body.code_verifier as string;
 
     if (!code || !clientId || !codeVerifier) {
-      return c.json({ error: "invalid_request", error_description: "Missing required parameters" }, 400);
+      return c.json(
+        { error: "invalid_request", error_description: "Missing required parameters" },
+        400,
+      );
     }
 
-    const client = getClient(clientId);
+    const client = await getClient(clientId);
     if (!client) {
       return c.json({ error: "invalid_client" }, 400);
     }
 
-    const authCode = consumeAuthCode(code);
+    const authCode = await consumeAuthCode(code);
     if (!authCode) {
-      return c.json({ error: "invalid_grant", error_description: "Invalid or expired authorization code" }, 400);
+      console.log("[oauth/token] auth code not found or expired");
+      return c.json(
+        { error: "invalid_grant", error_description: "Invalid or expired authorization code" },
+        400,
+      );
     }
+    console.log("[oauth/token] found auth code for user:", authCode.userId);
 
     if (authCode.clientId !== clientId) {
       return c.json({ error: "invalid_grant", error_description: "Client mismatch" }, 400);
@@ -272,17 +338,21 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
         .replace(/=+$/, "");
 
       if (base64url !== authCode.codeChallenge) {
-        return c.json({ error: "invalid_grant", error_description: "PKCE verification failed" }, 400);
+        return c.json(
+          { error: "invalid_grant", error_description: "PKCE verification failed" },
+          400,
+        );
       }
     }
 
     // Issue access token
-    const tokenResponse = createAccessToken({
+    const tokenResponse = await createAccessToken({
       clientId,
       userId: authCode.userId,
       userEmail: authCode.userEmail,
       userRole: authCode.userRole,
     });
+    console.log("[oauth/token] issued access token for user:", authCode.userId);
 
     return c.json(tokenResponse);
   });

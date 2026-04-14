@@ -1,0 +1,28 @@
+{
+  "name": "@cometa/documents-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/lambda.ts --outdir dist --target node --minify",
+    "start": "bun dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1024.0",
+    "@aws-sdk/client-sqs": "^3.1024.0",
+    "@aws-sdk/client-textract": "^3.1024.0",
+    "@aws-sdk/s3-request-presigner": "^3.1024.0",
+    "@clerk/backend": "^1.20.0",
+    "@cometa/auth": "*",
+    "@cometa/db": "*",
+    "drizzle-orm": "^0.45.2",
+    "@cometa/email": "*",
+    "@cometa/shared": "*",
+    "@scalar/hono-api-reference": "^0.5.184",
+    "hono": "^4.12.12",
+    "hono-openapi": "^0.4.0",
+    "openai": "^6.33.0",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.6"
+  }
+}

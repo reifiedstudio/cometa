@@ -1,0 +1,15 @@
+{
+  "name": "@cometa/service-accounting",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/handler.ts --outdir dist --target node --format esm --external @aws-sdk --external @anthropic-ai",
+    "zip": "cd dist && zip -r ../accounting.zip ."
+  },
+  "dependencies": {
+    "@cometa/service-core": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0"
+  }
+}

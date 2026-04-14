@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Card</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: transparent;
+      color: #f5f5f5;
+      padding: 12px;
+    }
+    .card {
+      border: 1px solid #262626;
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 480px;
+      background: #0a0a0a;
+    }
+    .card-accent { height: 4px; background: var(--accent, #737373); }
+    .card-body { padding: 20px; }
+    .card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .icon-bg {
+      width: 48px; height: 48px; border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .icon-bg svg { width: 24px; height: 24px; color: var(--accent, #737373); }
+    .card-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
+    .card-subtitle { font-size: 12px; color: #737373; margin-top: 2px; }
+    .card-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 16px; font-size: 13px; color: #a3a3a3; }
+    .meta-item { display: flex; align-items: center; gap: 4px; }
+    .meta-label { color: #737373; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+      border-radius: 4px; font-size: 11px; font-weight: 500;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .confidential-badge { --accent: #ef4444; }
+    .divider { height: 1px; background: #262626; margin: 16px 0; }
+    .card-actions { display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border-radius: 8px; font-size: 13px; font-weight: 500;
+      border: none; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent, #737373); color: #fff; }
+    .btn svg { width: 14px; height: 14px; }
+    .expires { font-size: 11px; color: #525252; margin-top: 12px; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 100px; color: #525252; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">Loading document...</div>
+  <div id="card" class="card" style="display:none">
+    <div class="card-accent"></div>
+    <div class="card-body">
+      <div class="card-header">
+        <div class="icon-bg" id="icon"></div>
+        <div>
+          <div class="card-title" id="title"></div>
+          <div class="card-subtitle" id="subtitle"></div>
+        </div>
+      </div>
+      <div class="card-meta" id="meta"></div>
+      <div class="divider"></div>
+      <div class="card-actions">
+        <button class="btn btn-primary" id="download-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF
+        </button>
+      </div>
+      <div class="expires" id="expires"></div>
+    </div>
+  </div>
+
+  <script>
+    // Minimal MCP Apps protocol — JSON-RPC 2.0 over postMessage
+    var _id = 0;
+    function rpcRequest(method, params) {
+      return { jsonrpc: "2.0", id: String(++_id), method: method, params: params };
+    }
+    function rpcNotification(method, params) {
+      return { jsonrpc: "2.0", method: method, params: params || {} };
+    }
+
+    var downloadUrl = "";
+
+    // Type configs
+    var types = {
+      contract:  { accent: "#3b82f6", label: "Contract",  icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+      nda:       { accent: "#8b5cf6", label: "NDA",       icon: '<rect x="3" y="11" width="18" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="16" r="1" fill="currentColor"/>' },
+      invoice:   { accent: "#10b981", label: "Invoice",   icon: '<path d="M4 2v20l4-2 4 2 4-2 4 2V2l-4 2-4-2-4 2L4 2z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 10h8M8 14h4" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+      proposal:  { accent: "#f59e0b", label: "Proposal",  icon: '<path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 21h6" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+      letter:    { accent: "#6366f1", label: "Letter",    icon: '<rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6l10 7 10-7" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+      agreement: { accent: "#3b82f6", label: "Agreement", icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
+      document:  { accent: "#737373", label: "Document",  icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" fill="none" stroke="currentColor" stroke-width="1.5"/>' }
+    };
+
+    function renderCard(data) {
+      var docType = data.type || "document";
+      var cfg = types[docType] || types.document;
+      var card = document.getElementById("card");
+      card.style.setProperty("--accent", cfg.accent);
+      document.getElementById("icon").innerHTML = '<svg viewBox="0 0 24 24" fill="none">' + cfg.icon + '</svg>';
+      document.getElementById("title").textContent = data.title || "Document";
+      document.getElementById("subtitle").textContent = cfg.label + " \u00b7 " + (data.filename || "document.pdf");
+
+      var items = [];
+      if (data.reference) items.push('<span class="meta-item"><span class="meta-label">Ref:</span> ' + data.reference + '</span>');
+      if (data.sizeKB) items.push('<span class="meta-item">' + data.sizeKB + ' KB</span>');
+      if (data.signerCount > 0) items.push('<span class="meta-item">' + data.signerCount + ' signer' + (data.signerCount > 1 ? 's' : '') + '</span>');
+      if (data.confidential) items.push('<span class="badge confidential-badge">Confidential</span>');
+      items.push('<span class="badge" style="--accent:' + cfg.accent + '">' + cfg.label + '</span>');
+      document.getElementById("meta").innerHTML = items.join("");
+
+      downloadUrl = data.downloadUrl || "";
+      document.getElementById("expires").textContent = "Link expires in 24 hours";
+      document.getElementById("loading").style.display = "none";
+      card.style.display = "block";
+
+      // Tell host our size
+      window.parent.postMessage(rpcNotification("ui/notifications/size-changed", { height: document.body.scrollHeight + 24 }), "*");
+    }
+
+    // Listen for messages from host
+    window.addEventListener("message", function(ev) {
+      var msg = ev.data;
+      if (!msg || msg.jsonrpc !== "2.0") return;
+
+      // Initialize response — host accepted our connection
+      if (msg.id && msg.result && msg.result.protocolVersion) {
+        // Send initialized notification
+        window.parent.postMessage(rpcNotification("ui/notifications/initialized"), "*");
+        return;
+      }
+
+      // Tool result notification
+      if (msg.method === "ui/notifications/tool-result" && msg.params) {
+        var content = msg.params.content;
+        if (!content) return;
+
+        // Find JSON data block
+        for (var i = 0; i < content.length; i++) {
+          if (content[i].type === "text" && content[i].text && content[i].text.charAt(0) === "{") {
+            try {
+              renderCard(JSON.parse(content[i].text));
+              return;
+            } catch(e) {}
+          }
+        }
+
+        // Fallback: parse from text
+        for (var j = 0; j < content.length; j++) {
+          if (content[j].type === "text" && content[j].text) {
+            var t = content[j].text;
+            var urlM = t.match(/\[Download PDF\]\((.+?)\)/);
+            var titleM = t.match(/Title: (.+)/);
+            renderCard({
+              title: titleM ? titleM[1] : "Document",
+              downloadUrl: urlM ? urlM[1] : "",
+              type: "document"
+            });
+            return;
+          }
+        }
+      }
+
+      // Tool input notification — we get the args before the tool runs
+      if (msg.method === "ui/notifications/tool-input" && msg.params && msg.params.arguments) {
+        var args = msg.params.arguments;
+        // Show a preview with what we know
+        renderCard({
+          title: args.title || "Generating...",
+          type: args.type || "document",
+          filename: (args.filename || "document") + ".pdf",
+          confidential: args.confidential
+        });
+      }
+    });
+
+    // Download button
+    document.getElementById("download-btn").addEventListener("click", function() {
+      if (downloadUrl) {
+        window.parent.postMessage(rpcRequest("ui/open-link", { url: downloadUrl }), "*");
+      }
+    });
+
+    // Connect — send initialize request
+    window.parent.postMessage(rpcRequest("ui/initialize", {
+      appInfo: { name: "Cometa Document Card", version: "0.1.0" },
+      appCapabilities: {},
+      protocolVersion: "2026-01-26"
+    }), "*");
+  </script>
+</body>
+</html>

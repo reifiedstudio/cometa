@@ -1,0 +1,20 @@
+{
+  "name": "@cometa/email-ingest",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/handler.ts --outdir dist --target node --format esm --external @aws-sdk",
+    "zip": "cd dist && zip -r ../email-ingest.zip ."
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-sqs": "^3.1024.0",
+    "@cometa/db": "*",
+    "drizzle-orm": "^0.38.0",
+    "mailparser": "^3.7.0"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.0",
+    "@types/aws-lambda": "^8.10.0"
+  }
+}

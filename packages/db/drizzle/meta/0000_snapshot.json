@@ -178,33 +178,17 @@
     "public.document_source": {
       "name": "document_source",
       "schema": "public",
-      "values": [
-        "upload",
-        "email"
-      ]
+      "values": ["upload", "email"]
     },
     "public.document_status": {
       "name": "document_status",
       "schema": "public",
-      "values": [
-        "processing",
-        "pending",
-        "reviewed",
-        "approved",
-        "overdue",
-        "awaiting_signature"
-      ]
+      "values": ["processing", "pending", "reviewed", "approved", "overdue", "awaiting_signature"]
     },
     "public.document_type": {
       "name": "document_type",
       "schema": "public",
-      "values": [
-        "invoice",
-        "receipt",
-        "contract",
-        "delivery_note",
-        "bill"
-      ]
+      "values": ["invoice", "receipt", "contract", "delivery_note", "bill"]
     }
   },
   "schemas": {},

@@ -3,18 +3,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 GATEWAY_DIR="$(dirname "$SCRIPT_DIR")"
-INFRA_DIR="$GATEWAY_DIR/../../infrastructure"
+INFRA_DIR="$GATEWAY_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building gateway for Lambda..."
 cd "$GATEWAY_DIR"
 bun build src/lambda.ts \
-  --outfile dist/index.mjs \
+  --outfile dist/lambda.js \
   --target node \
-  --minify
+  --minify \
+  --external @aws-sdk/client-dynamodb \
+  --external @aws-sdk/lib-dynamodb \
+  --external @aws-sdk/client-s3 \
+  --external @aws-sdk/s3-request-presigner
 
 echo "==> Packaging ZIP..."
 cd dist
-zip -j "$GATEWAY_DIR/gateway.zip" index.mjs
+zip -j "$GATEWAY_DIR/gateway.zip" lambda.js
 cd "$GATEWAY_DIR"
 
 echo "==> Getting artifacts bucket name..."

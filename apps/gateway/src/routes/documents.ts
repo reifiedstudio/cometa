@@ -1,67 +1,13 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { resolver, validator } from "hono-openapi/zod";
-import { z } from "zod";
-import type { GatewayEnv } from "../lib/types.js";
 import {
-  listDocuments,
-  getDocument,
-  searchDocuments,
   approveDocument,
   deleteDocument,
+  getDocument,
+  listDocuments,
+  searchDocuments,
 } from "../lib/documents.js";
-
-const documentTypeEnum = z.enum([
-  "invoice",
-  "receipt",
-  "contract",
-  "delivery_note",
-  "bill",
-]);
-
-const documentStatusEnum = z.enum([
-  "processing",
-  "pending",
-  "reviewed",
-  "approved",
-  "overdue",
-  "awaiting_signature",
-]);
-
-const documentSchema = z.object({
-  id: z.string().uuid(),
-  originalName: z.string(),
-  mimeType: z.string(),
-  sizeBytes: z.number(),
-  fileHash: z.string(),
-  s3Url: z.string(),
-  thumbnailUrl: z.string().nullable(),
-  type: documentTypeEnum.nullable(),
-  status: documentStatusEnum,
-  source: z.enum(["upload", "email"]),
-  description: z.string().nullable(),
-  aiSummary: z.string().nullable(),
-  extractedData: z.unknown().nullable(),
-  isDuplicate: z.boolean(),
-  isVerified: z.boolean(),
-  flags: z.unknown(),
-  receivedAt: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-const listQuerySchema = z.object({
-  type: documentTypeEnum.optional(),
-  status: documentStatusEnum.optional(),
-  sort: z.enum(["newest", "oldest"]).optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
-});
-
-const searchQuerySchema = z.object({
-  q: z.string().min(1),
-  type: documentTypeEnum.optional(),
-});
+import type { GatewayEnv } from "../lib/types.js";
 
 export const documentRoutes = new Hono<GatewayEnv>();
 
@@ -71,27 +17,32 @@ documentRoutes.get(
   describeRoute({
     tags: ["Documents"],
     summary: "List documents",
-    description: "List documents with optional filters for type, status, date range, and sort order.",
+    description:
+      "List documents with optional filters for type, status, date range, and sort order.",
     responses: {
       200: {
         description: "List of documents with counts",
         content: {
           "application/json": {
-            schema: resolver(
-              z.object({
-                documents: z.array(documentSchema),
-                total: z.number(),
-                counts: z.record(z.string(), z.number()),
-              }),
-            ),
+            schema: {
+              type: "object",
+              properties: {
+                documents: { type: "array", items: {} },
+                total: { type: "number" },
+                counts: { type: "object" },
+              },
+            },
           },
         },
       },
     },
   }),
-  validator("query", listQuerySchema),
   async (c) => {
-    const { type, status, sort, dateFrom, dateTo } = c.req.valid("query");
+    const type = c.req.query("type");
+    const status = c.req.query("status");
+    const sort = c.req.query("sort");
+    const dateFrom = c.req.query("dateFrom");
+    const dateTo = c.req.query("dateTo");
     const result = await listDocuments({ type, status, sort, dateFrom, dateTo });
     return c.json(result);
   },
@@ -109,20 +60,19 @@ documentRoutes.get(
         description: "Search results",
         content: {
           "application/json": {
-            schema: resolver(
-              z.object({
-                documents: z.array(documentSchema),
-                total: z.number(),
-              }),
-            ),
+            schema: {
+              type: "object",
+              properties: { documents: { type: "array", items: {} }, total: { type: "number" } },
+            },
           },
         },
       },
     },
   }),
-  validator("query", searchQuerySchema),
   async (c) => {
-    const { q, type } = c.req.valid("query");
+    const q = c.req.query("q");
+    const type = c.req.query("type");
+    if (!q) return c.json({ error: "Query parameter 'q' is required" }, 400);
     const result = await searchDocuments(q, type);
     return c.json(result);
   },
@@ -139,12 +89,10 @@ documentRoutes.get(
       200: {
         description: "Document details",
         content: {
-          "application/json": { schema: resolver(documentSchema) },
+          "application/json": { schema: { type: "object" } },
         },
       },
-      404: {
-        description: "Document not found",
-      },
+      404: { description: "Document not found" },
     },
   }),
   async (c) => {
@@ -170,12 +118,10 @@ documentRoutes.post(
       200: {
         description: "Updated document",
         content: {
-          "application/json": { schema: resolver(documentSchema) },
+          "application/json": { schema: { type: "object" } },
         },
       },
-      404: {
-        description: "Document not found",
-      },
+      404: { description: "Document not found" },
     },
   }),
   async (c) => {
@@ -202,15 +148,14 @@ documentRoutes.delete(
         description: "Deleted document confirmation",
         content: {
           "application/json": {
-            schema: resolver(
-              z.object({ id: z.string().uuid(), status: z.literal("deleted") }),
-            ),
+            schema: {
+              type: "object",
+              properties: { id: { type: "string" }, status: { type: "string" } },
+            },
           },
         },
       },
-      404: {
-        description: "Document not found",
-      },
+      404: { description: "Document not found" },
     },
   }),
   async (c) => {

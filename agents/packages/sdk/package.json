@@ -1,0 +1,17 @@
+{
+  "name": "@cometa/agents-sdk",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "seed": "bun run src/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.87.0",
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/client-ssm": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}

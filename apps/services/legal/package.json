@@ -1,0 +1,15 @@
+{
+  "name": "@cometa/service-legal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/handler.ts --outdir dist --target node --format esm --external @aws-sdk --external @anthropic-ai",
+    "zip": "cd dist && zip -r ../legal.zip ."
+  },
+  "dependencies": {
+    "@cometa/service-core": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0"
+  }
+}

@@ -1,13 +1,21 @@
 import { Hono } from "hono";
 import type { GatewayEnv } from "../lib/types.js";
-import {
-  createSignatureRequest,
-  getSignerByToken,
-  sendSignerOtp,
-  verifySignerOtp,
-  completeSigning,
-  getSignatureRequestByDocument,
-} from "../lib/signatures.js";
+
+const SIGNATURES_API_URL =
+  process.env["SIGNATURES_API_URL"] ??
+  process.env["SIGNATURES_MCP_URL"]?.replace(/\/mcp\/?$/, "") ??
+  "http://localhost:3007";
+
+async function sigFetch(path: string, init?: RequestInit) {
+  const res = await fetch(`${SIGNATURES_API_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+  return res;
+}
 
 // ── Authenticated routes (internal users) ──
 
@@ -24,66 +32,41 @@ signatureRoutes.post("/", async (c) => {
     return c.json({ error: "documentId and signerEmails are required" }, 400);
   }
 
-  const result = await createSignatureRequest({
-    documentId,
-    signerEmails,
-    message,
-    requestedBy: user.id,
-    requestedByEmail: user.email,
-    expiresInDays,
+  // Build form data for signatures service
+  const formData = new FormData();
+  formData.append("signerEmails", JSON.stringify(signerEmails));
+  if (message) formData.append("message", message);
+  if (documentId) formData.append("sourceRef", documentId);
+  if (expiresInDays) formData.append("expiresInDays", String(expiresInDays));
+  formData.append("fileHash", documentId); // Use doc ID as hash placeholder
+
+  const res = await fetch(`${SIGNATURES_API_URL}/api/requests`, {
+    method: "POST",
+    headers: {
+      "X-User-Id": user.id,
+      "X-User-Email": user.email,
+    },
+    body: formData,
   });
 
-  if (!result) {
-    return c.json({ error: "Document not found" }, 404);
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    return c.json({ error: `Signatures service error: ${err}` }, res.status as any);
   }
 
-  // Send emails to signers
-  const baseUrl = new URL(c.req.url);
-  const appUrl = process.env.CORS_ORIGIN || `${baseUrl.protocol}//${baseUrl.host}`;
-
-  for (const signer of result.signers) {
-    const signUrl = `${appUrl}/sign/${signer.token}`;
-
-    try {
-      const { sendEmail } = await import("@cometa/email");
-      const { SignatureRequestEmail } = await import("@cometa/email");
-      await sendEmail({
-        to: signer.email,
-        subject: `${user.email} sent you a document to sign`,
-        react: SignatureRequestEmail({
-          documentName: result.document.originalName,
-          documentType: result.document.type ?? "document",
-          senderEmail: user.email,
-          message: message ?? undefined,
-          signUrl,
-        }),
-      });
-    } catch (err) {
-      console.error(`Failed to send signature email to ${signer.email}:`, err);
-    }
-  }
-
-  return c.json({
-    id: result.request.id,
-    status: result.request.status,
-    signers: result.signers.map((s) => ({
-      id: s.id,
-      email: s.email,
-      status: s.status,
-    })),
-  }, 201);
+  return c.json(await res.json(), 201);
 });
 
 // Get signature status for a document
 signatureRoutes.get("/document/:documentId", async (c) => {
   const documentId = c.req.param("documentId");
-  const result = await getSignatureRequestByDocument(documentId);
+  const res = await sigFetch(`/api/requests/source/${documentId}`);
 
-  if (!result) {
+  if (!res.ok) {
     return c.json({ error: "No signature request found" }, 404);
   }
 
-  return c.json(result);
+  return c.json(await res.json());
 });
 
 // ── Public routes (external signers, no auth) ──
@@ -93,61 +76,25 @@ export const publicSignatureRoutes = new Hono<GatewayEnv>();
 // Get signing page data
 publicSignatureRoutes.get("/:token", async (c) => {
   const token = c.req.param("token");
-  const result = await getSignerByToken(token);
+  const res = await sigFetch(`/api/sign/${token}`);
 
-  if (!result) {
+  if (!res.ok) {
     return c.json({ error: "Invalid or expired signing link" }, 404);
   }
 
-  return c.json({
-    document: {
-      id: result.document?.id,
-      name: result.document?.originalName,
-      type: result.document?.type,
-      description: result.document?.description,
-      thumbnailUrl: result.document?.thumbnailUrl,
-    },
-    signer: {
-      email: result.signer.email,
-      status: result.signer.status,
-    },
-    request: {
-      message: result.request.message,
-      requestedByEmail: result.request.requestedByEmail,
-      expiresAt: result.request.expiresAt,
-    },
-    signatures: result.allSigners.map((s) => ({
-      email: s.email,
-      name: s.name,
-      status: s.status,
-      signedAt: s.signedAt,
-    })),
-  });
+  return c.json(await res.json());
 });
 
 // Send OTP
 publicSignatureRoutes.post("/:token/otp", async (c) => {
   const token = c.req.param("token");
-  const result = await sendSignerOtp(token);
+  const res = await sigFetch(`/api/sign/${token}/otp`, { method: "POST" });
 
-  if (!result) {
+  if (!res.ok) {
     return c.json({ error: "Invalid signing link" }, 404);
   }
 
-  // Send OTP email
-  try {
-    const { sendEmail } = await import("@cometa/email");
-    const { OtpEmail } = await import("@cometa/email");
-    await sendEmail({
-      to: result.email,
-      subject: "Your verification code",
-      react: OtpEmail({ otp: result.otp }),
-    });
-  } catch (err) {
-    console.error(`Failed to send OTP to ${result.email}:`, err);
-  }
-
-  return c.json({ sent: true, email: result.email });
+  return c.json(await res.json());
 });
 
 // Verify OTP
@@ -155,17 +102,17 @@ publicSignatureRoutes.post("/:token/verify", async (c) => {
   const token = c.req.param("token");
   const body = await c.req.json();
 
-  if (!body.otp) {
-    return c.json({ error: "OTP is required" }, 400);
+  const res = await sigFetch(`/api/sign/${token}/verify`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Verification failed" }));
+    return c.json(err, res.status as any);
   }
 
-  const result = await verifySignerOtp(token, body.otp);
-
-  if (!result.valid) {
-    return c.json({ error: result.error }, 400);
-  }
-
-  return c.json({ verified: true });
+  return c.json(await res.json());
 });
 
 // Complete signing
@@ -173,67 +120,20 @@ publicSignatureRoutes.post("/:token/sign", async (c) => {
   const token = c.req.param("token");
   const body = await c.req.json();
 
-  if (!body.name) {
-    return c.json({ error: "Name is required" }, 400);
-  }
-
-  const ipAddress =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "unknown";
-  const userAgent = c.req.header("user-agent") || "unknown";
-
-  const result = await completeSigning({
-    token,
-    name: body.name,
-    ipAddress,
-    userAgent,
-  });
-
-  if (!result) {
-    return c.json({ error: "Invalid signing link or already signed" }, 400);
-  }
-
-  // Send notification to requester if all signed
-  if (result.allSigned) {
-    try {
-      const { sendEmail } = await import("@cometa/email");
-      const { AllSignedEmail } = await import("@cometa/email");
-      const [request] = await (async () => {
-        const { db, schema } = await import("@cometa/db");
-        const { eq } = await import("drizzle-orm");
-        const [doc] = await db
-          .select()
-          .from(schema.documents)
-          .where(eq(schema.documents.id, result.request.documentId))
-          .limit(1);
-        return [doc];
-      })();
-
-      await sendEmail({
-        to: result.request.requestedByEmail,
-        subject: "All signatures collected",
-        react: AllSignedEmail({
-          documentName: request?.originalName ?? "Document",
-          signers: result.allSigners.map((s) => ({
-            name: s.name ?? s.email,
-            email: s.email,
-            signedAt: s.signedAt?.toISOString() ?? "",
-          })),
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to send all-signed notification:", err);
-    }
-  }
-
-  return c.json({
-    signed: true,
-    allSigned: result.allSigned,
-    signer: {
-      name: result.signer.name,
-      email: result.signer.email,
-      signedAt: result.signer.signedAt,
+  const res = await sigFetch(`/api/sign/${token}/sign`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      "X-Forwarded-For": c.req.header("x-forwarded-for") ?? "",
+      "User-Agent": c.req.header("user-agent") ?? "",
     },
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Signing failed" }));
+    return c.json(err, res.status as any);
+  }
+
+  return c.json(await res.json());
 });
