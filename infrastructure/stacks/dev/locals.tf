@@ -31,7 +31,7 @@ locals {
     GOOGLE_ADMIN_EMAIL          = var.google_admin_email
   }
 
-  documents_api_secrets = {
+  intake_api_secrets = {
     DATABASE_URL     = var.database_url
     OPENAI_API_KEY   = var.openai_api_key
     OPENAI_MODEL     = var.openai_model

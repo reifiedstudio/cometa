@@ -3,7 +3,7 @@
 import { useOrganization } from "@clerk/clerk-react";
 
 const SERVICES = [
-  { name: "Documents", domain: "docs.daniellourie.me", status: "connected" },
+  { name: "Intake", domain: "intake.daniellourie.me", status: "connected" },
   { name: "Tasks", domain: "tasks.daniellourie.me", status: "connected" },
   { name: "MCP Gateway", domain: "mcp.daniellourie.me", status: "connected" },
   { name: "Notes", domain: "notes.daniellourie.me", status: "connected" },

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/lambda.ts --outdir dist --target node --minify",
-    "start": "bun dist/index.js"
+    "start": "bun dist/index.js",
+    "seed": "bun scripts/seed.ts"
   },
   "dependencies": {
     "@clerk/backend": "^1.20.0",

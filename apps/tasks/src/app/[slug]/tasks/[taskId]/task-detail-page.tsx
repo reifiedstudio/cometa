@@ -2,16 +2,19 @@
 
 import { AgentStream } from "@/components/agent-stream";
 import { LinkPreviews } from "@/components/link-preview";
-import { fetchMessages, fetchTask, getSessionStatus, getStreamUrl, performAction } from "@/lib/api";
+import { fetchMessages, fetchServices, fetchTask, getSessionStatus, performAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { AppLayout } from "@cometa/ui/app-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Bot,
+  Building2,
   Check,
   CheckCircle2,
   Clock,
   Copy,
+  ListTodo,
   Loader2,
   MessageSquare,
   User,
@@ -39,6 +42,14 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
   failed: { label: "Failed", className: "bg-red-50 text-red-700", icon: AlertTriangle },
 };
 
+const serviceMeta: Record<string, { label: string; description: string }> = {
+  accounting: { label: "Accounting", description: "Invoices, expenses, payments" },
+  legal: { label: "Legal", description: "Contracts, compliance, reviews" },
+  hr: { label: "Human Resources", description: "Hiring, onboarding, leave" },
+  engineering: { label: "Engineering", description: "Bugs, deployments, infra" },
+  marketing: { label: "Marketing", description: "Campaigns, content, analytics" },
+};
+
 export default function TaskDetailPage() {
   const params = useParams<{ slug: string; taskId: string }>();
   const pathname = usePathname();
@@ -54,6 +65,11 @@ export default function TaskDetailPage() {
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const { data: servicesData } = useQuery({
+    queryKey: ["services"],
+    queryFn: fetchServices,
+  });
 
   const { data: taskData, isLoading } = useQuery({
     queryKey: ["task", slug, taskId],
@@ -107,43 +123,35 @@ export default function TaskDetailPage() {
   const isAwaitingApproval = task?.status === "awaiting_approval";
   const isPending = approveMutation.isPending || rejectMutation.isPending;
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <div className="flex justify-center py-16">
-          <Loader2 size={20} className="animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
+  const meta = serviceMeta[slug] ?? { label: slug.charAt(0).toUpperCase() + slug.slice(1), description: "" };
 
-  if (!task) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <p className="text-sm text-muted-foreground text-center py-16">Task not found</p>
-      </div>
-    );
-  }
+  const slugs = servicesData?.services?.length
+    ? servicesData.services.map((s: any) => s.slug)
+    : ["accounting", "legal"];
 
-  const config = statusConfig[task.status] ?? statusConfig.pending;
-  const StatusIcon = config.icon;
-  const label = slug.charAt(0).toUpperCase() + slug.slice(1);
+  const navItems = [
+    { title: "My Tasks", url: "/", icon: ListTodo },
+    {
+      title: "Departments",
+      url: "#",
+      icon: Building2,
+      isActive: true,
+      items: slugs.map((s: string) => ({
+        title: serviceMeta[s]?.label ?? s.charAt(0).toUpperCase() + s.slice(1),
+        url: `/${s}`,
+      })),
+    },
+  ];
 
-  return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
-        <a href="/" className="hover:text-foreground transition-colors">
-          All Tasks
-        </a>
-        <span>/</span>
-        <a href={`/${slug}`} className="hover:text-foreground transition-colors">
-          {label}
-        </a>
-        <span>/</span>
-        <span className="text-foreground">Task</span>
-      </div>
-
-      <div className="border border-border rounded-lg p-5 mb-6 space-y-4">
+  const content = isLoading ? (
+    <div className="flex justify-center py-16">
+      <Loader2 size={20} className="animate-spin text-muted-foreground" />
+    </div>
+  ) : !task ? (
+    <p className="text-sm text-muted-foreground text-center py-16">Task not found</p>
+  ) : (
+    <div className="space-y-6 max-w-3xl">
+      <div className="border border-border rounded-lg p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium leading-relaxed">{task.body}</p>
@@ -152,11 +160,14 @@ export default function TaskDetailPage() {
           <span
             className={cn(
               "shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full",
-              config.className,
+              (statusConfig[task.status] ?? statusConfig.pending).className,
             )}
           >
-            <StatusIcon size={11} />
-            {config.label}
+            {(() => {
+              const cfg = statusConfig[task.status] ?? statusConfig.pending;
+              const Icon = cfg.icon;
+              return <><Icon size={11} />{cfg.label}</>;
+            })()}
           </span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
@@ -204,17 +215,15 @@ export default function TaskDetailPage() {
       </div>
 
       {sessionData?.sessionId && (
-        <div className="mb-6">
-          <AgentStream
-            slug={slug}
-            taskId={taskId}
-            sessionId={sessionData.sessionId}
-            onComplete={() => queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] })}
-          />
-        </div>
+        <AgentStream
+          slug={slug}
+          taskId={taskId}
+          sessionId={sessionData.sessionId}
+          onComplete={() => queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] })}
+        />
       )}
 
-      <div className="mb-6">
+      <div>
         <h3 className="text-sm font-semibold mb-3">Messages</h3>
         {messagesLoading ? (
           <div className="flex justify-center py-8">
@@ -286,5 +295,15 @@ export default function TaskDetailPage() {
         </div>
       )}
     </div>
+  );
+
+  return (
+    <AppLayout
+      breadcrumbs={[{ label: "Tasks" }, { label: meta.label }, { label: "Task" }]}
+      navItems={navItems}
+      onSignOut={() => {}}
+    >
+      {content}
+    </AppLayout>
   );
 }

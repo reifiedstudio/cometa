@@ -1,5 +1,5 @@
-export { mdFinancialSummary } from "./financial-summary.js";
-export { mdProfitAndLoss } from "./profit-and-loss.js";
-export { mdInvoiceList } from "./invoice-list.js";
-export { mdTaskSummary } from "./task-summary.js";
-export { mdContactsReport } from "./contacts.js";
+export { mdFinancialSummary } from "./financial-summary";
+export { mdProfitAndLoss } from "./profit-and-loss";
+export { mdInvoiceList } from "./invoice-list";
+export { mdTaskSummary } from "./task-summary";
+export { mdContactsReport } from "./contacts";

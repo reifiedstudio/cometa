@@ -3,12 +3,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Logo } from "@cometa/ui/logo";
 import {
   AlertCircle,
   CheckCircle2,
   Clock,
   Eye,
   Loader2,
+  Lock,
   PenLine,
   ShieldCheck,
   XCircle,
@@ -159,53 +161,6 @@ export default function SignPage({
     }
   };
 
-  // Cometa logo
-  const Logo = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="28" height="28">
-      <defs>
-        <clipPath id="lc2">
-          <rect width="200" height="200" x="0" y="0" />
-        </clipPath>
-        <g id="lg2">
-          <g transform="matrix(0.997,0,0,1,100.147,100)" opacity="1">
-            <g opacity="1" transform="matrix(1,0,0,1,0,0)">
-              <path
-                fill="rgb(255,0,0)"
-                fillOpacity="1"
-                d="M51.995,-68.599 C51.995,-31.97 22.612,-2.586 -14.017,-2.586 C-14.017,-2.586 -51.854,-2.586 -51.854,-2.586 C-53.188,-2.586 -54.269,-1.505 -54.269,-0.171 C-54.269,1.163 -53.188,2.244 -51.854,2.244 C-51.854,2.244 -14.017,2.244 -14.017,2.244 C22.612,2.244 51.995,31.628 51.995,68.257 C51.995,68.257 52.995,68.257 52.995,68.257 C52.995,68.257 52.995,-68.599 52.995,-68.599 C52.995,-68.599 51.995,-68.599 51.995,-68.599z"
-              />
-            </g>
-          </g>
-        </g>
-        <filter id="lf2" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
-          <feComponentTransfer in="SourceGraphic">
-            <feFuncA type="table" tableValues="1.0 0.0" />
-          </feComponentTransfer>
-        </filter>
-        {/* @ts-expect-error maskType is a valid SVG attribute */}
-        <mask id="lm2" maskType="alpha">
-          <g filter="url(#lf2)">
-            <rect width="200" height="200" x="0" y="0" fill="#ffffff" opacity="0" />
-            <use xlinkHref="#lg2" />
-          </g>
-        </mask>
-      </defs>
-      <g clipPath="url(#lc2)">
-        <g mask="url(#lm2)">
-          <g transform="matrix(1,0,0,1,100,100)" opacity="1">
-            <g opacity="1" transform="matrix(1,0,0,1,0,0)">
-              <path
-                fill="rgb(0,0,0)"
-                fillOpacity="1"
-                d="M-51.925,-68.428 L51.925,-68.428 L51.925,68.428 L-51.925,68.428z"
-              />
-            </g>
-          </g>
-        </g>
-      </g>
-    </svg>
-  );
-
   if (step === "loading") {
     return (
       <div className="w-full max-w-lg mx-4">
@@ -236,9 +191,8 @@ export default function SignPage({
       <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
         {/* Header with branding */}
         <div className="px-6 py-5 border-b">
-          <div className="flex items-center gap-2 mb-4">
-            <Logo />
-            <span className="text-sm font-semibold text-foreground">Cometa</span>
+          <div className="mb-4">
+            <Logo className="h-5 w-auto" />
           </div>
           <h1 className="text-lg font-semibold text-foreground">{data?.document.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -457,7 +411,10 @@ export default function SignPage({
 
         {/* Footer branding */}
         <div className="px-6 py-3 border-t bg-muted">
-          <p className="text-xs text-muted-foreground/60 text-center">Secured by Cometa</p>
+          <p className="text-xs text-muted-foreground/60 text-center flex items-center justify-center gap-1">
+            <Lock className="size-2.5" />
+            Secured by Cometa
+          </p>
         </div>
       </div>
     </div>

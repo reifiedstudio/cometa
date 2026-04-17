@@ -1,16 +1,33 @@
 "use client";
 
-import { useOrganization } from "@clerk/clerk-react";
+import { useClerk, useOrganization } from "@clerk/clerk-react";
 import {
-  TASKS,
-  PERMISSIONS,
-  type PermissionKey,
+  ALL_CAPABILITY_KEYS,
+  type CapabilityKey,
   ROLES,
   type RoleKey,
-  getEffectivePermissions,
-  getPermissionsByService,
+  getEffectiveCapabilities,
+  getCapabilitiesByDomain,
 } from "@cometa/auth";
-import { Building2, Check, MoreHorizontal, Plus, Shield, Users, X } from "lucide-react";
+import { AppLayout } from "@cometa/ui/app-layout";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@cometa/ui/ui/table";
+import {
+  Users,
+  Settings2,
+  Plus,
+  Check,
+  MoreHorizontal,
+  ArrowLeft,
+  Pencil,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 const ROLE_LIST = Object.values(ROLES);
@@ -24,28 +41,42 @@ const ROLE_STYLES: Record<string, string> = {
   "org:member": "bg-muted text-muted-foreground",
 };
 
-function RoleBadge({ role }: { role: string }) {
-  const roleDef = ROLES[role as RoleKey];
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ROLE_STYLES[role] ?? ROLE_STYLES["org:member"]}`}
-    >
-      {roleDef?.name ?? role}
-    </span>
-  );
+const navItems = [
+  { title: "Members", url: "/", icon: Users, isActive: true },
+];
+
+function roleName(key: string) {
+  return ROLES[key as RoleKey]?.name ?? "Member";
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Avatar({ member, size = "sm" }: { member: any; size?: "sm" | "lg" }) {
+  const cls = size === "lg" ? "size-12 text-lg" : "size-8 text-xs";
+  const imageUrl = member.publicUserData?.imageUrl;
+  const initial = (
+    member.publicUserData?.firstName?.[0] ??
+    member.publicUserData?.identifier?.[0] ??
+    "?"
+  ).toUpperCase();
+
+  if (imageUrl) {
+    return <img src={imageUrl} alt="" className={`${cls} rounded-full`} />;
+  }
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-4">
-      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">{icon}</div>
-      <div>
-        <p className="text-2xl font-semibold">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
-      </div>
+    <div className={`${cls} rounded-full bg-violet-100 flex items-center justify-center font-medium text-violet-700`}>
+      {initial}
     </div>
   );
 }
+
+function memberName(m: any): string {
+  return (
+    [m.publicUserData?.firstName, m.publicUserData?.lastName]
+      .filter(Boolean)
+      .join(" ") || "—"
+  );
+}
+
+// ── Invite Modal ──
 
 function InviteModal({
   onClose,
@@ -64,17 +95,11 @@ function InviteModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-lg w-full max-w-md p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Invite Member</h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-muted">
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-muted">
             <X size={18} />
           </button>
         </div>
@@ -111,9 +136,11 @@ function InviteModal({
                     className="sr-only"
                   />
                   <div
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${role === r.key ? "border-primary" : "border-muted-foreground/30"}`}
+                    className={`size-4 rounded-full border-2 flex items-center justify-center ${
+                      role === r.key ? "border-primary" : "border-muted-foreground/30"
+                    }`}
                   >
-                    {role === r.key && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    {role === r.key && <div className="size-2 rounded-full bg-primary" />}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{r.name}</p>
@@ -137,119 +164,171 @@ function InviteModal({
   );
 }
 
-function MemberDetailPanel({
+// ── Member Detail Page ──
+
+function MemberDetailPage({
   member,
-  onClose,
+  onBack,
   onChangeRole,
+  onToggleCapability,
 }: {
   member: any;
-  onClose: () => void;
+  onBack: () => void;
   onChangeRole: (role: string) => void;
+  onToggleCapability: (capKey: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
   const role = member.role as RoleKey;
-  const extraPermissions = (member.publicMetadata?.extraPermissions as string[]) ?? [];
-  const effectivePerms = getEffectivePermissions(role, extraPermissions);
-  const permsByService = getPermissionsByService();
+  const extraCapabilities = (member.publicMetadata?.extraCapabilities as string[]) ?? [];
+  const roleCaps = getEffectiveCapabilities(role, []);
+  const capsByDomain = getCapabilitiesByDomain();
   const roleDef = ROLES[role];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white w-full max-w-lg h-full overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Member Details</h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-muted">
-            <X size={18} />
-          </button>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+        >
+          <ArrowLeft className="size-4" />
+          Back to members
+        </button>
 
-        <div className="p-6 space-y-6">
-          {/* Profile */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {member.publicUserData.imageUrl ? (
-              <img src={member.publicUserData.imageUrl} alt="" className="w-12 h-12 rounded-full" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg font-medium">
-                {(member.publicUserData.firstName?.[0] ?? "?").toUpperCase()}
-              </div>
-            )}
+            <Avatar member={member} size="lg" />
             <div>
-              <p className="font-semibold">
-                {[member.publicUserData.firstName, member.publicUserData.lastName]
-                  .filter(Boolean)
-                  .join(" ") || "—"}
-              </p>
-              <p className="text-sm text-muted-foreground">{member.publicUserData.identifier}</p>
+              <h1 className="text-xl font-semibold">{memberName(member)}</h1>
+              <p className="text-sm text-muted-foreground">{member.publicUserData?.identifier}</p>
+              <span
+                className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ROLE_STYLES[member.role] ?? ROLE_STYLES["org:member"]}`}
+              >
+                {roleName(member.role)}
+              </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setEditing(!editing)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              editing
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border hover:bg-muted/50"
+            }`}
+          >
+            {editing ? (
+              <>
+                <Check className="size-4" />
+                Done
+              </>
+            ) : (
+              <>
+                <Pencil className="size-4" />
+                Edit
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
-          {/* Role */}
-          <div>
-            <h3 className="text-sm font-medium mb-2">Role</h3>
-            <div className="space-y-1">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Role */}
+        <div>
+          <h2 className="text-sm font-medium mb-3">Role</h2>
+          {editing ? (
+            <div className="space-y-1.5">
               {ROLE_LIST.map((r) => (
                 <button
                   key={r.key}
+                  type="button"
                   onClick={() => onChangeRole(r.key)}
                   className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                    role === r.key ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    member.role === r.key
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
                   }`}
                 >
                   <div>
                     <p className="text-sm font-medium">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.description}</p>
                   </div>
-                  {role === r.key && <Check size={16} className="text-primary shrink-0" />}
+                  {member.role === r.key && (
+                    <Check className="size-4 text-primary shrink-0" />
+                  )}
                 </button>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border p-4">
+              <p className="text-sm font-medium">{roleDef?.name ?? "Member"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{roleDef?.description}</p>
+            </div>
+          )}
+        </div>
 
-          {/* Effective permissions */}
-          <div>
-            <h3 className="text-sm font-medium mb-2">
-              Permissions
-              {roleDef?.isAdmin && (
-                <span className="ml-2 text-xs text-muted-foreground font-normal">
-                  (admin — all granted)
-                </span>
-              )}
-            </h3>
-            {Object.entries(permsByService).map(([service, perms]) => (
-              <div key={service} className="mb-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                  {service}
+        {/* Capabilities */}
+        <div>
+          <h2 className="text-sm font-medium mb-3">
+            Capabilities
+            {roleDef?.isAdmin && (
+              <span className="ml-2 text-xs text-muted-foreground font-normal">
+                (admin — all granted)
+              </span>
+            )}
+          </h2>
+          <div className="rounded-lg border divide-y">
+            {Object.entries(capsByDomain).map(([domain, caps]) => (
+              <div key={domain} className="p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  {domain}
                 </p>
-                <div className="space-y-0.5">
-                  {perms.map((perm) => {
-                    const hasIt = effectivePerms.includes(perm.key as PermissionKey);
-                    const fromRole = (ROLES[role]?.permissions as readonly string[])?.includes(
-                      perm.key,
-                    );
-                    const isExtra = extraPermissions.includes(perm.key);
+                <div className="space-y-1">
+                  {caps.map((cap) => {
+                    const fromRole = roleCaps.includes(cap.key as CapabilityKey);
+                    const isExtra = extraCapabilities.includes(cap.key);
+                    const hasIt = roleDef?.isAdmin || fromRole || isExtra;
 
                     return (
                       <div
-                        key={perm.key}
-                        className={`flex items-center justify-between py-1.5 px-2 rounded text-sm ${hasIt ? "" : "text-muted-foreground"}`}
+                        key={cap.key}
+                        className="flex items-center justify-between py-1 text-sm"
                       >
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-2 h-2 rounded-full ${hasIt ? "bg-emerald-500" : "bg-muted-foreground/20"}`}
+                            className={`size-2 rounded-full ${
+                              hasIt ? "bg-emerald-500" : "bg-muted-foreground/20"
+                            }`}
                           />
-                          <span>{perm.name}</span>
+                          <span className={hasIt ? "" : "text-muted-foreground"}>{cap.name}</span>
+                          {isExtra && !fromRole && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">
+                              custom
+                            </span>
+                          )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {roleDef?.isAdmin
-                            ? "admin"
-                            : fromRole
-                              ? "role"
-                              : isExtra
-                                ? "custom"
-                                : "—"}
-                        </span>
+                        {roleDef?.isAdmin ? (
+                          <span className="text-xs text-muted-foreground">admin</span>
+                        ) : editing ? (
+                          <button
+                            type="button"
+                            onClick={() => onToggleCapability(cap.key)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                              hasIt ? "bg-primary" : "bg-muted"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block size-3.5 rounded-full bg-white shadow-sm transition-transform mt-[3px] ${
+                                hasIt ? "translate-x-[18px]" : "translate-x-[3px]"
+                              }`}
+                            />
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {fromRole ? "role" : isExtra ? "custom" : "—"}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -263,8 +342,112 @@ function MemberDetailPanel({
   );
 }
 
+// ── Members List ──
+
+function MembersListPage({
+  members,
+  onSelectMember,
+  onInvite,
+}: {
+  members: any[];
+  onSelectMember: (m: any) => void;
+  onInvite: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Members</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage organization members and their roles
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onInvite}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="size-4" />
+          Invite
+        </button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Total Members</p>
+          <p className="text-2xl font-semibold mt-1">{members.length}</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Roles</p>
+          <p className="text-2xl font-semibold mt-1">{ROLE_LIST.length}</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">Capabilities</p>
+          <p className="text-2xl font-semibold mt-1">{ALL_CAPABILITY_KEYS.length}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Member</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((m) => (
+              <TableRow
+                key={m.id}
+                className="cursor-pointer"
+                onClick={() => onSelectMember(m)}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar member={m} />
+                    <div>
+                      <p className="text-sm font-medium">{memberName(m)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.publicUserData?.identifier}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${ROLE_STYLES[m.role] ?? ROLE_STYLES["org:member"]}`}
+                  >
+                    {roleName(m.role)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(m.createdAt).toLocaleDateString("en-ZA", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <MoreHorizontal className="size-4 text-muted-foreground" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──
+
 export default function MembersPage() {
-  const { organization, membership, memberships, isLoaded } = useOrganization({
+  const { signOut } = useClerk();
+  const { organization, memberships, isLoaded } = useOrganization({
     memberships: { pageSize: 50 },
   });
   const [showInvite, setShowInvite] = useState(false);
@@ -308,123 +491,60 @@ export default function MembersPage() {
     }
   };
 
+  const handleToggleCapability = async (capKey: string) => {
+    if (!selectedMember) return;
+    const extras = (selectedMember.publicMetadata?.extraCapabilities as string[]) ?? [];
+    const roleCaps = getEffectiveCapabilities(selectedMember.role as RoleKey, []);
+    if (roleCaps.includes(capKey as CapabilityKey)) return;
+    const has = extras.includes(capKey);
+    const updated = has ? extras.filter((c: string) => c !== capKey) : [...extras, capKey];
+    try {
+      await selectedMember.update({
+        publicMetadata: { ...selectedMember.publicMetadata, extraCapabilities: updated },
+      });
+      memberships?.revalidate?.();
+    } catch (err) {
+      console.error("Capability toggle failed:", err);
+    }
+  };
+
+  const breadcrumbs = selectedMember
+    ? [
+        { label: "Admin" },
+        { label: "Members", href: "/" },
+        { label: memberName(selectedMember) },
+      ]
+    : [{ label: "Admin" }, { label: "Members" }];
+
   return (
-    <div className="flex-1 p-8 overflow-y-auto">
-      <div className="max-w-4xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold">{organization.name}</h1>
-            <p className="text-muted-foreground">Manage members and access</p>
-          </div>
-          <button
-            onClick={() => setShowInvite(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Plus size={16} />
-            Invite
-          </button>
-        </div>
+    <AppLayout
+      breadcrumbs={breadcrumbs}
+      navItems={navItems}
+      user={{
+        name: organization.name,
+        email: "",
+        avatar: organization.imageUrl ?? "",
+      }}
+      onSignOut={() => signOut()}
+    >
+      {selectedMember ? (
+        <MemberDetailPage
+          member={selectedMember}
+          onBack={() => setSelectedMember(null)}
+          onChangeRole={handleChangeRole}
+          onToggleCapability={handleToggleCapability}
+        />
+      ) : (
+        <MembersListPage
+          members={members}
+          onSelectMember={setSelectedMember}
+          onInvite={() => setShowInvite(true)}
+        />
+      )}
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <StatCard
-            icon={<Users size={20} className="text-muted-foreground" />}
-            label="Members"
-            value={String(members.length)}
-          />
-          <StatCard
-            icon={<Building2 size={20} className="text-muted-foreground" />}
-            label="Tasks"
-            value={String(TASKS.length)}
-          />
-          <StatCard
-            icon={<Shield size={20} className="text-muted-foreground" />}
-            label="Your Role"
-            value={ROLES[membership?.role as RoleKey]?.name ?? "Member"}
-          />
-        </div>
-
-        <div className="rounded-lg border">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">
-                  Member
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">
-                  Role
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">
-                  Joined
-                </th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr
-                  key={m.id}
-                  className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => setSelectedMember(m)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {m.publicUserData?.imageUrl ? (
-                        <img
-                          src={m.publicUserData?.imageUrl}
-                          alt=""
-                          className="w-8 h-8 rounded-full"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                          {(
-                            m.publicUserData?.firstName?.[0] ??
-                            m.publicUserData?.identifier?.[0] ??
-                            "?"
-                          ).toUpperCase()}
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">
-                          {[m.publicUserData?.firstName, m.publicUserData?.lastName]
-                            .filter(Boolean)
-                            .join(" ") || "—"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {m.publicUserData?.identifier}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <RoleBadge role={m.role} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(m.createdAt).toLocaleDateString("en-ZA", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <MoreHorizontal size={16} className="text-muted-foreground" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvite={handleInvite} />}
-        {selectedMember && (
-          <MemberDetailPanel
-            member={selectedMember}
-            onClose={() => setSelectedMember(null)}
-            onChangeRole={handleChangeRole}
-          />
-        )}
-      </div>
-    </div>
+      {showInvite && (
+        <InviteModal onClose={() => setShowInvite(false)} onInvite={handleInvite} />
+      )}
+    </AppLayout>
   );
 }

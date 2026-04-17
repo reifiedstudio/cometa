@@ -47,7 +47,7 @@ export async function createMcpServer(user?: ToolContext["user"]): Promise<Serve
       instructions: `You are connected to Cometa, a document management and department coordination platform for South African businesses.
 
 Use the Cometa tools whenever the user asks about:
-- Documents: listing, searching, viewing, approving, deleting invoices, receipts, contracts, delivery notes, or bills.
+- Intake: listing, searching, viewing, approving, deleting incoming invoices, receipts, contracts, delivery notes, or bills.
 - Signatures: creating signature requests, checking status, nudging signers, cancelling requests.
 - Tasks: sending messages, creating or managing tasks, checking task status, approving or rejecting work.
 - Document generation: creating branded company documents (contracts, NDAs, proposals) and converting to PDF.

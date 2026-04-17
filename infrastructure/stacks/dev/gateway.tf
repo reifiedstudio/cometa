@@ -19,17 +19,18 @@ module "gateway_lambda" {
 
   environment = merge(local.gateway_secrets, {
     NODE_ENV           = var.environment
-    S3_BUCKET          = module.documents_bucket.bucket_id
+    S3_BUCKET          = module.intake_bucket.bucket_id
     CORS_ORIGIN        = "https://${var.root_domain}"
     DYNAMODB_TABLE     = module.services_table.name
     ANTHROPIC_API_KEY  = var.anthropic_api_key
     NAME_PREFIX        = local.name_prefix
+    TASKS_API_URL      = module.tasks_api_lambda.function_url
     TASKS_MCP_URL      = "${module.tasks_api_lambda.function_url}mcp"
     AUTH_TABLE         = module.auth_table.name
     NOTES_BUCKET       = module.notes_content_bucket.bucket_id
     NOTES_DOMAIN       = var.notes_domain
     DRIVE_API_URL      = module.drive_lambda.function_url
-    DOCUMENTS_API_URL  = module.documents_api_lambda.function_url
+    INTAKE_API_URL     = module.intake_api_lambda.function_url
     SIGNATURES_API_URL = module.signatures_lambda.function_url
     SIGNATURES_MCP_URL = "${module.signatures_lambda.function_url}mcp"
     UTILITIES_API_URL  = module.utilities_lambda.function_url
@@ -49,8 +50,8 @@ module "gateway_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.documents_bucket.bucket_arn,
-          "${module.documents_bucket.bucket_arn}/*"
+          module.intake_bucket.bucket_arn,
+          "${module.intake_bucket.bucket_arn}/*"
         ]
       },
       {

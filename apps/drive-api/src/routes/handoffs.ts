@@ -1,4 +1,4 @@
-import { getTask, hasPermission } from "@cometa/auth";
+import { getTask } from "@cometa/auth";
 import { putTask } from "@cometa/service-core";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -54,8 +54,8 @@ handoffRoutes.post(
   async (c) => {
     const user = c.get("user");
 
-    if (!hasPermission(user.permissions, "org:drive:handoff")) {
-      return c.json({ error: "Missing org:drive:handoff permission" }, 403);
+    if (!user.permissions.includes("drive:handoff")) {
+      return c.json({ error: "Missing drive:handoff capability" }, 403);
     }
 
     const body = await c.req.json();

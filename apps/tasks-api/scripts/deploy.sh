@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
-INFRA_DIR="$APP_DIR/../../infrastructure"
+INFRA_DIR="$APP_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building tasks-api for Lambda..."
 cd "$APP_DIR"
@@ -31,8 +31,8 @@ aws s3 cp tasks-api.zip "s3://$BUCKET/tasks-api/tasks-api.zip"
 
 echo "==> Updating Lambda function code..."
 cd "$INFRA_DIR"
-terraform apply -target=module.departments_api_lambda -auto-approve
+terraform apply -target=module.tasks_api_lambda -auto-approve
 
 echo ""
 echo "==> Deploy complete!"
-echo "Tasks API URL: $(terraform output -raw departments_api_url)"
+echo "Tasks API URL: $(terraform output -raw tasks_api_url)"

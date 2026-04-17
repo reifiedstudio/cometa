@@ -1,8 +1,8 @@
 import React from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChartBlock } from "./chart-block.js";
-import type { ChartDef } from "./chart-types.js";
+import { ChartBlock } from "./chart-block";
+import type { ChartDef } from "./chart-types";
 
 export interface MarkdownRendererProps {
   content: string;

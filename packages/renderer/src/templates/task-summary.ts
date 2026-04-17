@@ -1,4 +1,4 @@
-import { statusEmoji } from "./utils.js";
+import { statusEmoji } from "./utils";
 
 export function mdTaskSummary(data: {
   department: string;

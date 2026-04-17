@@ -1,4 +1,4 @@
-import { TASKS, getTask, hasPermission } from "@cometa/auth";
+import { TASKS, getTask } from "@cometa/auth";
 import { putTask } from "@cometa/service-core";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -51,8 +51,8 @@ accessRoutes.post(
   async (c) => {
     const user = c.get("user");
 
-    if (!hasPermission(user.permissions, "org:drive:request")) {
-      return c.json({ error: "Missing org:drive:request permission" }, 403);
+    if (!user.permissions.includes("drive:access")) {
+      return c.json({ error: "Missing drive:access capability" }, 403);
     }
 
     const body = await c.req.json();

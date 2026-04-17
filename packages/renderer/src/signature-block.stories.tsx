@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { SignatureBlock } from "./signature-block.js";
+import { SignatureBlock } from "./signature-block";
 
 const meta: Meta<typeof SignatureBlock> = {
   title: "Document/SignatureBlock",

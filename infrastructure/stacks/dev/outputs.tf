@@ -1,8 +1,8 @@
 # ── Shared ──
 
-output "documents_bucket" {
-  description = "S3 bucket name for document storage"
-  value       = module.documents_bucket.bucket_id
+output "intake_bucket" {
+  description = "S3 bucket for intake document storage"
+  value       = module.intake_bucket.bucket_id
 }
 
 output "textract_service_role_arn" {
@@ -139,26 +139,26 @@ output "drive_ui_cloudfront_id" {
   value       = module.drive_ui_site.cloudfront_id
 }
 
-# ── Documents ──
+# ── Intake ──
 
-output "documents_api_url" {
-  description = "Documents API Lambda function URL"
-  value       = module.documents_api_lambda.function_url
+output "intake_api_url" {
+  description = "Intake API Lambda function URL"
+  value       = module.intake_api_lambda.function_url
 }
 
-output "documents_frontend_url" {
-  description = "Documents frontend URL"
-  value       = "https://${var.documents_domain}"
+output "intake_frontend_url" {
+  description = "Intake frontend URL"
+  value       = "https://${var.intake_domain}"
 }
 
-output "documents_frontend_bucket" {
-  description = "S3 bucket for documents frontend"
-  value       = module.documents_site.bucket_id
+output "intake_frontend_bucket" {
+  description = "S3 bucket for intake frontend"
+  value       = module.intake_site.bucket_id
 }
 
-output "documents_frontend_cloudfront_id" {
-  description = "CloudFront distribution ID for documents frontend"
-  value       = module.documents_site.cloudfront_id
+output "intake_frontend_cloudfront_id" {
+  description = "CloudFront distribution ID for intake frontend"
+  value       = module.intake_site.cloudfront_id
 }
 
 # ── Signatures ──
@@ -190,6 +190,23 @@ output "utilities_api_url" {
   value       = module.utilities_lambda.function_url
 }
 
+# ── Gateway UI ──
+
+output "gateway_ui_url" {
+  description = "Gateway UI frontend URL"
+  value       = "https://${var.gateway_ui_domain}"
+}
+
+output "gateway_ui_bucket" {
+  description = "S3 bucket for gateway UI static files"
+  value       = module.gateway_ui_site.bucket_id
+}
+
+output "gateway_ui_cloudfront_id" {
+  description = "CloudFront distribution ID for gateway UI"
+  value       = module.gateway_ui_site.cloudfront_id
+}
+
 # ── Assets CDN ──
 
 output "assets_url" {
@@ -212,4 +229,21 @@ output "assets_cloudfront_id" {
 output "pdf_converter_url" {
   description = "PDF Converter Lambda function URL"
   value       = module.pdf_converter_lambda.function_url
+}
+
+# ── Email Storybook ──
+
+output "email_storybook_bucket" {
+  description = "S3 bucket for the deployed email Storybook"
+  value       = module.email_storybook_site.bucket_id
+}
+
+output "email_storybook_cloudfront_id" {
+  description = "CloudFront distribution ID for email Storybook"
+  value       = module.email_storybook_site.cloudfront_id
+}
+
+output "email_storybook_url" {
+  description = "Email Storybook URL"
+  value       = "https://${var.email_storybook_domain}"
 }

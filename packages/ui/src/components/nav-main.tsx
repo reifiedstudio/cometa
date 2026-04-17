@@ -26,9 +26,11 @@ export function NavMain({
     url: string
     icon?: LucideIcon
     isActive?: boolean
+    onClick?: (e: React.MouseEvent) => void
     items?: {
       title: string
       url: string
+      onClick?: (e: React.MouseEvent) => void
     }[]
   }[]
 }) {
@@ -49,13 +51,13 @@ export function NavMain({
                 >
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
                     {item.items.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton render={<a href={subItem.url} />}>
+                        <SidebarMenuSubButton render={<a href={subItem.url} onClick={subItem.onClick} />}>
                           <span>{subItem.title}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -66,7 +68,7 @@ export function NavMain({
             </Collapsible>
           ) : (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} render={<a href={item.url} />}>
+              <SidebarMenuButton tooltip={item.title} render={<a href={item.url} onClick={item.onClick} />}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
               </SidebarMenuButton>

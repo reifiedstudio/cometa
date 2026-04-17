@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
-INFRA_DIR="$APP_DIR/../../infrastructure"
+INFRA_DIR="$APP_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building signatures-api for Lambda..."
 cd "$APP_DIR"
@@ -37,4 +37,4 @@ terraform apply -target=module.signatures_lambda -auto-approve
 
 echo ""
 echo "==> Deploy complete!"
-echo "Signatures API URL: $(terraform output -raw signatures_url)"
+echo "Signatures API URL: $(terraform output -raw signatures_api_url)"

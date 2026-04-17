@@ -65,7 +65,7 @@ export default function TasksPage() {
     return members.filter((m) => {
       if (ROLES[m.role as RoleKey]?.isAdmin) return true;
       const roleDef = ROLES[m.role as RoleKey];
-      return (roleDef?.permissions as readonly string[])?.includes(permKey);
+      return (roleDef?.capabilities as readonly string[])?.includes(permKey);
     }).length;
   }
 
@@ -83,7 +83,7 @@ export default function TasksPage() {
             <TaskCard
               key={task.slug}
               task={task}
-              memberCount={countForTask(task.permissionKey)}
+              memberCount={countForTask(task.capabilityKey)}
             />
           ))}
         </div>

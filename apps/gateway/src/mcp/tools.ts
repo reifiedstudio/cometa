@@ -7,7 +7,7 @@ import {
   getDocument,
   listDocuments,
   searchDocuments,
-} from "../lib/documents.js";
+} from "../lib/intake.js";
 import type { ToolContext, ToolDef } from "./server.js";
 
 const s3 = new S3Client({});
@@ -15,11 +15,11 @@ const NOTES_BUCKET = process.env["NOTES_BUCKET"] ?? "cometa-dev-use1-notes-conte
 const NOTES_DOMAIN = process.env["NOTES_DOMAIN"] ?? "notes.daniellourie.me";
 
 export const localTools: ToolDef[] = [
-  // ── Documents ──
+  // ── Intake ──
   {
-    name: "list_documents",
+    name: "list_intake_documents",
     description:
-      "List documents with optional filters for type, status, date range, and sort order.",
+      "List intake documents with optional filters for type, status, date range, and sort order.",
     inputSchema: {
       type: "object",
       properties: {
@@ -60,9 +60,9 @@ export const localTools: ToolDef[] = [
     },
   },
   {
-    name: "get_document",
+    name: "get_intake_document",
     description:
-      "Get full details of a document by its ID, including extracted data and AI summary.",
+      "Get full details of an intake document by its ID, including extracted data and AI summary.",
     inputSchema: {
       type: "object",
       properties: { id: { type: "string", format: "uuid" } },
@@ -76,9 +76,9 @@ export const localTools: ToolDef[] = [
     },
   },
   {
-    name: "search_documents",
+    name: "search_intake_documents",
     description:
-      "Search documents by text query. Searches across description, AI summary, and OCR text.",
+      "Search intake documents by text query. Searches across description, AI summary, and OCR text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -114,8 +114,8 @@ export const localTools: ToolDef[] = [
     },
   },
   {
-    name: "approve_document",
-    description: "Approve a document, changing its status to approved.",
+    name: "approve_intake_document",
+    description: "Approve an intake document, changing its status to approved.",
     inputSchema: {
       type: "object",
       properties: { id: { type: "string", format: "uuid" } },
@@ -136,8 +136,8 @@ export const localTools: ToolDef[] = [
     },
   },
   {
-    name: "delete_document",
-    description: "Soft-delete a document by moving it to trash.",
+    name: "delete_intake_document",
+    description: "Soft-delete an intake document by moving it to trash.",
     inputSchema: {
       type: "object",
       properties: { id: { type: "string", format: "uuid" } },

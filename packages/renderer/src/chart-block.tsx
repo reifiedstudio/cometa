@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ChartDef } from "./chart-types.js";
+import type { ChartDef } from "./chart-types";
 
 const COLORS = [
   "var(--color-chart-1, #e76f51)",

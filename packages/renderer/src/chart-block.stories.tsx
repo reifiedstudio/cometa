@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { ChartBlock } from "./chart-block.js";
+import { ChartBlock } from "./chart-block";
 
 const meta: Meta<typeof ChartBlock> = {
   title: "ChartBlock",

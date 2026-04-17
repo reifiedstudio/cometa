@@ -1,6 +1,6 @@
 const API_URL =
   process.env.NEXT_PUBLIC_TASKS_API_URL ??
-  "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws";
+  "https://c5c2pqmpitjtmcaqfx63cd43bq0mxzmr.lambda-url.us-east-1.on.aws";
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   return fetch(`${API_URL}${path}`, {

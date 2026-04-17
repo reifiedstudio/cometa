@@ -1,4 +1,4 @@
-import type { Signer } from "./signature-block.js";
+import type { Signer } from "./signature-block";
 
 export interface ExportDocumentOptions {
   title: string;

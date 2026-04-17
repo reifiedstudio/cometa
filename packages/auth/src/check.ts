@@ -1,68 +1,81 @@
-import type { PermissionKey } from "./permissions";
-import { ALL_PERMISSION_KEYS } from "./permissions";
+import type { CapabilityKey } from "./capabilities";
+import { ALL_CAPABILITY_KEYS } from "./capabilities";
 import { ROLES, type RoleKey } from "./roles";
 
 /**
- * Check if a user has a specific permission.
+ * Check if a user has a specific capability.
  *
  * Works with:
  * - Role (from Clerk org membership)
- * - Extra permissions (from Clerk membership metadata overrides)
+ * - Extra capabilities (from Clerk membership metadata overrides)
  *
- * Usage in a service:
- *   const role = getUserRole(); // from Clerk JWT
- *   const extras = getUserMetadata().extraPermissions; // from Clerk metadata
- *   if (hasPermission(role, "org:documents:approve", extras)) { ... }
+ * Usage:
+ *   const role = getUserRole();
+ *   const extras = getUserMetadata().extraCapabilities;
+ *   if (hasCapability(role, "documents:approve", extras)) { ... }
  */
-export function hasPermission(
+export function hasCapability(
   role: string,
-  permission: PermissionKey,
-  extraPermissions?: string[],
+  capability: CapabilityKey,
+  extraCapabilities?: string[],
 ): boolean {
   const roleDef = ROLES[role as RoleKey];
 
   // Admin gets everything
   if (roleDef?.isAdmin) return true;
 
-  // Check role permissions
-  if (roleDef?.permissions.includes(permission)) return true;
+  // Check role capabilities
+  if (roleDef?.capabilities.includes(capability)) return true;
 
   // Check extra per-user overrides
-  if (extraPermissions?.includes(permission)) return true;
+  if (extraCapabilities?.includes(capability)) return true;
 
   return false;
 }
 
 /**
- * Get all effective permissions for a user given their role + extras.
+ * Get all effective capabilities for a user given their role + extras.
  */
-export function getEffectivePermissions(
+export function getEffectiveCapabilities(
   role: string,
-  extraPermissions?: string[],
-): PermissionKey[] {
+  extraCapabilities?: string[],
+): CapabilityKey[] {
   const roleDef = ROLES[role as RoleKey];
 
   // Admin gets everything
-  if (roleDef?.isAdmin) return [...ALL_PERMISSION_KEYS];
+  if (roleDef?.isAdmin) return [...ALL_CAPABILITY_KEYS];
 
-  const perms = new Set<PermissionKey>(roleDef?.permissions ?? []);
-  if (extraPermissions) {
-    for (const p of extraPermissions) {
-      if (ALL_PERMISSION_KEYS.includes(p as PermissionKey)) {
-        perms.add(p as PermissionKey);
+  const caps = new Set<CapabilityKey>(roleDef?.capabilities ?? []);
+  if (extraCapabilities) {
+    for (const c of extraCapabilities) {
+      if (ALL_CAPABILITY_KEYS.includes(c as CapabilityKey)) {
+        caps.add(c as CapabilityKey);
       }
     }
   }
-  return [...perms];
+  return [...caps];
 }
 
 /**
- * Check if a user has access to a specific task.
+ * Check if a user has access to a specific department task queue.
  */
 export function hasTaskAccess(
   role: string,
   taskSlug: string,
-  extraPermissions?: string[],
+  extraCapabilities?: string[],
 ): boolean {
-  return hasPermission(role, `org:dept:${taskSlug}` as PermissionKey, extraPermissions);
+  return hasCapability(role, `dept:${taskSlug}` as CapabilityKey, extraCapabilities);
+}
+
+// ── Backward compatibility aliases ──
+
+/** @deprecated Use hasCapability */
+export const hasPermission = hasCapability;
+
+/** @deprecated Use getEffectiveCapabilities */
+export function getEffectivePermissions(
+  role: string,
+  extraPermissions?: string[],
+): CapabilityKey[] {
+  return getEffectiveCapabilities(role, extraPermissions);
 }

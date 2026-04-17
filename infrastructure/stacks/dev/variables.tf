@@ -109,10 +109,10 @@ variable "drive_ui_domain" {
   default     = "drive.daniellourie.me"
 }
 
-variable "documents_domain" {
+variable "intake_domain" {
   description = "Custom domain for the documents frontend"
   type        = string
-  default     = "docs.daniellourie.me"
+  default     = "intake.daniellourie.me"
 }
 
 variable "signatures_domain" {
@@ -121,10 +121,22 @@ variable "signatures_domain" {
   default     = "sign.daniellourie.me"
 }
 
+variable "email_storybook_domain" {
+  description = "Custom domain for the deployed email Storybook"
+  type        = string
+  default     = "emails.daniellourie.me"
+}
+
 variable "assets_domain" {
   description = "Custom domain for the public assets CDN"
   type        = string
   default     = "assets.daniellourie.me"
+}
+
+variable "gateway_ui_domain" {
+  description = "Custom domain for the gateway UI frontend"
+  type        = string
+  default     = "gateway.daniellourie.me"
 }
 
 variable "google_service_account_json" {

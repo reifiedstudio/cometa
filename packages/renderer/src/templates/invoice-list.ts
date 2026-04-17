@@ -1,4 +1,4 @@
-import { formatZAR, statusEmoji } from "./utils.js";
+import { formatZAR, statusEmoji } from "./utils";
 
 export function mdInvoiceList(data: {
   invoices: {

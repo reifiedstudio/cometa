@@ -10,7 +10,6 @@
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/client-sqs": "^3.1024.0",
     "@cometa/db": "*",
-    "drizzle-orm": "^0.38.0",
     "mailparser": "^3.7.0"
   },
   "devDependencies": {

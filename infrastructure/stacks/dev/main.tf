@@ -2,10 +2,10 @@
 # S3 Buckets
 # ══════════════════════════════════════════════
 
-module "documents_bucket" {
+module "intake_bucket" {
   source = "../../modules/s3"
 
-  bucket_name        = "${local.name_prefix}-${local.region_short}-documents"
+  bucket_name        = "${local.name_prefix}-${local.region_short}-intake"
   versioning_enabled = true
 
   cors_rules = [
@@ -17,12 +17,12 @@ module "documents_bucket" {
     }
   ]
 
-  bucket_policy_json = data.aws_iam_policy_document.documents_bucket_policy.json
+  bucket_policy_json = data.aws_iam_policy_document.intake_bucket_policy.json
 
   tags = local.common_tags
 }
 
-data "aws_iam_policy_document" "documents_bucket_policy" {
+data "aws_iam_policy_document" "intake_bucket_policy" {
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"
@@ -32,8 +32,8 @@ data "aws_iam_policy_document" "documents_bucket_policy" {
     }
     actions = ["s3:*"]
     resources = [
-      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-documents",
-      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-documents/*",
+      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake",
+      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake/*",
     ]
     condition {
       test     = "Bool"
@@ -50,7 +50,7 @@ data "aws_iam_policy_document" "documents_bucket_policy" {
       identifiers = ["ses.amazonaws.com"]
     }
     actions   = ["s3:PutObject"]
-    resources = ["arn:aws:s3:::${local.name_prefix}-${local.region_short}-documents/emails/*"]
+    resources = ["arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake/emails/*"]
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceAccount"
@@ -173,7 +173,7 @@ resource "aws_iam_role" "textract_service" {
 data "aws_iam_policy_document" "textract_s3_access" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${module.documents_bucket.bucket_arn}/*"]
+    resources = ["${module.intake_bucket.bucket_arn}/*"]
   }
 }
 
@@ -188,17 +188,17 @@ resource "aws_iam_role_policy_attachment" "textract_s3" {
 }
 
 # ══════════════════════════════════════════════
-# Lambda — Documents API
+# Lambda — Intake API
 # ══════════════════════════════════════════════
 
-module "documents_api_lambda" {
+module "intake_api_lambda" {
   source = "../../modules/lambda"
 
-  function_name = "${local.name_prefix}-documents-api"
-  description   = "Documents REST API"
+  function_name = "${local.name_prefix}-intake-api"
+  description   = "Intake REST API — document verification and approval"
 
   artifact_bucket_name = module.artifacts_bucket.bucket_id
-  code_s3_key          = "documents-api/documents-api.zip"
+  code_s3_key          = "intake-api/intake-api.zip"
 
   runtime         = "nodejs22.x"
   handler         = "lambda.handler"
@@ -206,10 +206,10 @@ module "documents_api_lambda" {
   memory_mb       = 512
   timeout_seconds = 30
 
-  environment = merge(local.documents_api_secrets, {
-    S3_BUCKET         = module.documents_bucket.bucket_id
+  environment = merge(local.intake_api_secrets, {
+    S3_BUCKET         = module.intake_bucket.bucket_id
     AWS_SQS_QUEUE_URL = module.processing_queue.queue_url
-    CORS_ORIGIN       = "https://${var.documents_domain}"
+    CORS_ORIGIN       = "https://${var.intake_domain}"
   })
 
   inline_policy_json = jsonencode({
@@ -225,8 +225,8 @@ module "documents_api_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.documents_bucket.bucket_arn,
-          "${module.documents_bucket.bucket_arn}/*"
+          module.intake_bucket.bucket_arn,
+          "${module.intake_bucket.bucket_arn}/*"
         ]
       },
       {
@@ -260,17 +260,17 @@ module "documents_api_lambda" {
 }
 
 # ══════════════════════════════════════════════
-# Lambda — Documents SQS Worker
+# Lambda — Intake SQS Worker
 # ══════════════════════════════════════════════
 
-module "documents_sqs_lambda" {
+module "intake_sqs_lambda" {
   source = "../../modules/lambda"
 
-  function_name = "${local.name_prefix}-documents-sqs"
-  description   = "Documents SQS worker — processes document queue items"
+  function_name = "${local.name_prefix}-intake-sqs"
+  description   = "Intake SQS worker — processes document queue items"
 
   artifact_bucket_name = module.artifacts_bucket.bucket_id
-  code_s3_key          = "documents-api/documents-sqs.zip"
+  code_s3_key          = "intake-api/intake-sqs.zip"
 
   runtime         = "nodejs22.x"
   handler         = "sqs-handler.handler"
@@ -278,8 +278,8 @@ module "documents_sqs_lambda" {
   memory_mb       = 512
   timeout_seconds = 300
 
-  environment = merge(local.documents_api_secrets, {
-    S3_BUCKET = module.documents_bucket.bucket_id
+  environment = merge(local.intake_api_secrets, {
+    S3_BUCKET = module.intake_bucket.bucket_id
   })
 
   inline_policy_json = jsonencode({
@@ -295,8 +295,8 @@ module "documents_sqs_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.documents_bucket.bucket_arn,
-          "${module.documents_bucket.bucket_arn}/*"
+          module.intake_bucket.bucket_arn,
+          "${module.intake_bucket.bucket_arn}/*"
         ]
       },
       {
@@ -331,9 +331,9 @@ module "documents_sqs_lambda" {
   tags = local.common_tags
 }
 
-resource "aws_lambda_event_source_mapping" "documents_sqs" {
+resource "aws_lambda_event_source_mapping" "intake_sqs" {
   event_source_arn = module.processing_queue.queue_arn
-  function_name    = module.documents_sqs_lambda.function_arn
+  function_name    = module.intake_sqs_lambda.function_arn
   batch_size       = 5
   enabled          = true
 }
@@ -359,7 +359,7 @@ module "signatures_lambda" {
 
   environment = merge(local.signatures_secrets, {
     SIGNATURES_S3_BUCKET = module.signatures_bucket.bucket_id
-    CORS_ORIGIN          = "https://${var.documents_domain}"
+    CORS_ORIGIN          = "https://${var.intake_domain}"
   })
 
   inline_policy_json = jsonencode({
@@ -490,6 +490,7 @@ module "tasks_api_lambda" {
   })
 
   create_function_url = true
+  cors_enabled        = false  # CORS handled by Hono middleware in the app
 
   tags = local.common_tags
 }
@@ -630,7 +631,7 @@ module "task_worker_lambda" {
         Sid      = "S3DocumentRead"
         Effect   = "Allow"
         Action   = ["s3:GetObject"]
-        Resource = ["${module.documents_bucket.bucket_arn}/*"]
+        Resource = ["${module.intake_bucket.bucket_arn}/*"]
       },
       {
         Sid    = "SSMServiceDiscovery"
@@ -684,7 +685,7 @@ module "email_ingest_lambda" {
 
   environment = {
     NODE_ENV          = var.environment
-    S3_BUCKET         = module.documents_bucket.bucket_id
+    S3_BUCKET         = module.intake_bucket.bucket_id
     AWS_SQS_QUEUE_URL = module.processing_queue.queue_url
     DATABASE_URL      = local.gateway_secrets.DATABASE_URL
   }
@@ -696,7 +697,7 @@ module "email_ingest_lambda" {
         Sid      = "S3Access"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = ["${module.documents_bucket.bucket_arn}/*"]
+        Resource = ["${module.intake_bucket.bucket_arn}/*"]
       },
       {
         Sid      = "SQSSend"
@@ -749,7 +750,7 @@ resource "aws_ses_receipt_rule" "inbound_docs" {
   recipients    = [var.inbound_email_domain]
 
   s3_action {
-    bucket_name       = module.documents_bucket.bucket_id
+    bucket_name       = module.intake_bucket.bucket_id
     object_key_prefix = "emails/"
     position          = 1
   }
@@ -784,13 +785,13 @@ module "admin_site" {
   tags           = local.common_tags
 }
 
-module "documents_site" {
+module "intake_site" {
   source = "../../modules/static-site"
 
   name_prefix    = local.name_prefix
-  site_name      = "documents"
-  bucket_name    = "${local.name_prefix}-${local.region_short}-documents-frontend"
-  domain         = var.documents_domain
+  site_name      = "intake"
+  bucket_name    = "${local.name_prefix}-${local.region_short}-intake-frontend"
+  domain         = var.intake_domain
   hosted_zone_id = var.mcp_hosted_zone_id
   tags           = local.common_tags
 }
@@ -806,6 +807,17 @@ module "drive_ui_site" {
   tags           = local.common_tags
 }
 
+module "email_storybook_site" {
+  source = "../../modules/static-site"
+
+  name_prefix    = local.name_prefix
+  site_name      = "email-storybook"
+  bucket_name    = "${local.name_prefix}-${local.region_short}-email-storybook"
+  domain         = var.email_storybook_domain
+  hosted_zone_id = var.mcp_hosted_zone_id
+  tags           = local.common_tags
+}
+
 module "signatures_site" {
   source = "../../modules/static-site"
 
@@ -813,6 +825,17 @@ module "signatures_site" {
   site_name      = "signatures"
   bucket_name    = "${local.name_prefix}-${local.region_short}-signatures-ui"
   domain         = var.signatures_domain
+  hosted_zone_id = var.mcp_hosted_zone_id
+  tags           = local.common_tags
+}
+
+module "gateway_ui_site" {
+  source = "../../modules/static-site"
+
+  name_prefix    = local.name_prefix
+  site_name      = "gateway-ui"
+  bucket_name    = "${local.name_prefix}-${local.region_short}-gateway-ui"
+  domain         = var.gateway_ui_domain
   hosted_zone_id = var.mcp_hosted_zone_id
   tags           = local.common_tags
 }

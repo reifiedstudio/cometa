@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DRIVE_DIR="$(dirname "$SCRIPT_DIR")"
-INFRA_DIR="$DRIVE_DIR/../../infrastructure"
+INFRA_DIR="$DRIVE_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building Drive API for Lambda..."
 cd "$DRIVE_DIR"

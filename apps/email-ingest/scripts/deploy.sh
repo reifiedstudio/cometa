@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
-INFRA_DIR="$APP_DIR/../../infrastructure"
+INFRA_DIR="$APP_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building email-ingest for Lambda..."
 cd "$APP_DIR"

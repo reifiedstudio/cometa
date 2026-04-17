@@ -1,4 +1,4 @@
-import { formatZAR } from "./utils.js";
+import { formatZAR } from "./utils";
 
 export function mdContactsReport(data: {
   contacts: {

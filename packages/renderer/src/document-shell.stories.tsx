@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { DocumentShell } from "./document-shell.js";
-import { MarkdownRenderer } from "./markdown-renderer.js";
+import { DocumentShell } from "./document-shell";
+import { MarkdownRenderer } from "./markdown-renderer";
 
 const meta: Meta<typeof DocumentShell> = {
   title: "Document/Shell",

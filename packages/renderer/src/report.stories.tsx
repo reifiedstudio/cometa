@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { MarkdownRenderer } from "./markdown-renderer.js";
-import { mdFinancialSummary } from "./templates/financial-summary.js";
-import { mdProfitAndLoss } from "./templates/profit-and-loss.js";
+import { MarkdownRenderer } from "./markdown-renderer";
+import { mdFinancialSummary } from "./templates/financial-summary";
+import { mdProfitAndLoss } from "./templates/profit-and-loss";
 
 const meta: Meta<typeof MarkdownRenderer> = {
   title: "Reports",

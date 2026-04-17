@@ -10,7 +10,7 @@ import { getProxyStatus, getUpstreamTools } from "./mcp/proxy.js";
 import { createMcpServer } from "./mcp/server.js";
 import { localTools } from "./mcp/tools.js";
 import { authMiddleware, mcpAuth } from "./middleware/auth.js";
-import { documentRoutes } from "./routes/documents.js";
+import { intakeRoutes } from "./routes/intake.js";
 import { noteRoutes } from "./routes/notes.js";
 import { publicSignatureRoutes, signatureRoutes } from "./routes/signatures.js";
 
@@ -22,7 +22,7 @@ export function createApp(): Hono<GatewayEnv> {
   // in terraform) to avoid duplicate Access-Control-Allow-Origin headers.
   const ALLOWED_ORIGINS = new Set([
     "https://notes.daniellourie.me",
-    "https://docs.daniellourie.me",
+    "https://intake.daniellourie.me",
     "https://admin.daniellourie.me",
     "https://drive.daniellourie.me",
     "https://sign.daniellourie.me",
@@ -116,19 +116,19 @@ export function createApp(): Hono<GatewayEnv> {
   );
 
   // ── Proxied API docs for downstream services ──
-  const DOCUMENTS_API_URL = process.env["DOCUMENTS_API_URL"] ?? "http://localhost:3006";
+  const INTAKE_API_URL = process.env["INTAKE_API_URL"] ?? "http://localhost:3006";
   const SIGNATURES_API_URL = process.env["SIGNATURES_API_URL"] ?? "http://localhost:3007";
   const TASKS_API_BASE_URL = process.env["TASKS_API_URL"] ?? "http://localhost:3005";
   const DRIVE_API_URL = process.env["DRIVE_API_URL"] ?? "http://localhost:3004";
 
   // Proxy OpenAPI specs from downstream services
-  app.get("/docs/documents/openapi", async (c) => {
+  app.get("/docs/intake/openapi", async (c) => {
     try {
-      const res = await fetch(`${DOCUMENTS_API_URL}openapi`);
-      if (!res.ok) return c.json({ error: "Documents API spec unavailable" }, 502);
+      const res = await fetch(`${INTAKE_API_URL}openapi`);
+      if (!res.ok) return c.json({ error: "Intake API spec unavailable" }, 502);
       return c.json(await res.json());
     } catch {
-      return c.json({ error: "Documents API unreachable" }, 502);
+      return c.json({ error: "Intake API unreachable" }, 502);
     }
   });
 
@@ -164,10 +164,10 @@ export function createApp(): Hono<GatewayEnv> {
 
   // Scalar UIs for downstream services
   app.get(
-    "/docs/documents",
+    "/docs/intake",
     apiReference({
       theme: "kepler",
-      spec: { url: "/docs/documents/openapi" },
+      spec: { url: "/docs/intake/openapi" },
     }),
   );
 
@@ -402,10 +402,10 @@ ${mcpToolListScript(endpoint)}
     </div>
   </div>
   <div class="service-card">
-    <h3>Documents</h3>
-    <p>Document ingestion, OCR, AI classification, and CRUD. No MCP tools — REST API only.</p>
+    <h3>Intake</h3>
+    <p>Document intake, OCR, AI classification, verification and approval. REST API only.</p>
     <div class="links">
-      <a href="/docs/documents">API Docs</a>
+      <a href="/docs/intake">API Docs</a>
     </div>
   </div>
 </div>
@@ -437,7 +437,7 @@ ${mcpToolListScript(endpoint)}
 
   // ── REST API routes (documents only — tasks has its own API) ──
   app.use("/api/*", authMiddleware);
-  app.route("/api/documents", documentRoutes);
+  app.route("/api/intake", intakeRoutes);
   app.route("/api/notes", noteRoutes);
   app.route("/api/signatures", signatureRoutes);
 

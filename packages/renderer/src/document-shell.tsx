@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { DocumentHeader, type CompanyInfo } from "./document-header.js";
-import { DocumentFooter } from "./document-footer.js";
-import { SignatureBlock, type Signer } from "./signature-block.js";
+import { DocumentHeader, type CompanyInfo } from "./document-header";
+import { DocumentFooter } from "./document-footer";
+import { SignatureBlock, type Signer } from "./signature-block";
 
 export interface DocumentShellProps {
   company: CompanyInfo & {

@@ -12,7 +12,8 @@
     "format": "biome format --write .",
     "storybook": "turbo storybook",
     "db:generate": "turbo db:generate",
-    "db:migrate": "turbo db:migrate"
+    "db:migrate": "turbo db:migrate",
+    "seed": "bun scripts/seed-all.ts"
   },
   "overrides": {
     "react": "19.2.4",

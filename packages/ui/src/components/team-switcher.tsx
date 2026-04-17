@@ -26,10 +26,15 @@ export function TeamSwitcher({
     name: string
     logo: React.ElementType
     description: string
+    url?: string
   }[]
 }) {
   const { isMobile } = useSidebar()
-  const [activeService, setActiveService] = React.useState(teams[0])
+  const [activeService, setActiveService] = React.useState(() => {
+    if (typeof window === "undefined") return teams[0]
+    const origin = window.location.origin
+    return teams.find((t) => t.url && origin === new URL(t.url).origin) ?? teams[0]
+  })
 
   if (!activeService) {
     return null
@@ -70,7 +75,12 @@ export function TeamSwitcher({
             {teams.map((service) => (
               <DropdownMenuItem
                 key={service.name}
-                onClick={() => setActiveService(service)}
+                onClick={() => {
+                  setActiveService(service)
+                  if (service.url) {
+                    window.location.href = service.url
+                  }
+                }}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">

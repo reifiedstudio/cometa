@@ -17,8 +17,9 @@ bun build src/lambda.ts \
   --external @aws-sdk/s3-request-presigner
 
 echo "==> Packaging ZIP..."
+echo '{"type":"module"}' > dist/package.json
 cd dist
-zip -j "$GATEWAY_DIR/gateway.zip" lambda.js
+zip -j "$GATEWAY_DIR/gateway.zip" lambda.js package.json
 cd "$GATEWAY_DIR"
 
 echo "==> Getting artifacts bucket name..."

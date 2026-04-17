@@ -1,8 +1,8 @@
-import type { PermissionKey } from "./permissions";
+import type { CapabilityKey } from "./capabilities";
 
 /**
  * Role definitions.
- * Each role bundles a set of permissions.
+ * Each role bundles a set of capabilities.
  * Roles are synced to Clerk — this is the source of truth.
  */
 
@@ -10,8 +10,8 @@ export interface Role {
   key: string;
   name: string;
   description: string;
-  permissions: PermissionKey[];
-  /** If true, this role grants access to all departments */
+  capabilities: CapabilityKey[];
+  /** If true, this role grants all capabilities */
   isAdmin?: boolean;
 }
 
@@ -20,72 +20,97 @@ export const ROLES: Record<string, Role> = {
     key: "org:admin",
     name: "Admin",
     description: "Full access to everything",
-    permissions: [], // Admin gets all permissions implicitly
+    capabilities: [], // Admin gets all capabilities implicitly
     isAdmin: true,
   },
   "org:accounting_member": {
     key: "org:accounting_member",
     name: "Accounting",
     description: "Financial operations, invoices, reports",
-    permissions: [
-      "org:dept:accounting",
-      "org:accounting:view",
-      "org:accounting:manage",
-      "org:documents:read",
-      "org:documents:write",
-      "org:drive:handoff",
-      "org:drive:request",
-      "org:mcp:access",
+    capabilities: [
+      "dept:accounting",
+      "accounting:view",
+      "accounting:manage",
+      "documents:list",
+      "documents:read",
+      "documents:search",
+      "drive:list",
+      "drive:handoff",
+      "drive:access",
+      "notes:create",
+      "mcp:access",
     ],
   },
   "org:legal_member": {
     key: "org:legal_member",
     name: "Legal",
     description: "Contracts, compliance, signatures",
-    permissions: [
-      "org:dept:legal",
-      "org:documents:read",
-      "org:documents:write",
-      "org:documents:approve",
-      "org:signatures:request",
-      "org:signatures:sign",
-      "org:drive:handoff",
-      "org:drive:request",
-      "org:mcp:access",
+    capabilities: [
+      "dept:legal",
+      "documents:list",
+      "documents:read",
+      "documents:search",
+      "documents:approve",
+      "signatures:request",
+      "signatures:read",
+      "signatures:cancel",
+      "signatures:nudge",
+      "signatures:manage",
+      "signatures:audit",
+      "drive:list",
+      "drive:handoff",
+      "drive:access",
+      "notes:create",
+      "utilities:create_document",
+      "utilities:convert_pdf",
+      "mcp:access",
     ],
   },
   "org:operations_member": {
     key: "org:operations_member",
     name: "Operations",
     description: "Business operations, documents",
-    permissions: [
-      "org:dept:operations",
-      "org:documents:read",
-      "org:drive:handoff",
-      "org:drive:request",
-      "org:mcp:access",
+    capabilities: [
+      "dept:operations",
+      "documents:list",
+      "documents:read",
+      "documents:search",
+      "drive:list",
+      "drive:access",
+      "notes:create",
+      "mcp:access",
     ],
   },
   "org:hr_member": {
     key: "org:hr_member",
     name: "HR",
     description: "People management, signatures",
-    permissions: [
-      "org:dept:hr",
-      "org:documents:read",
-      "org:documents:write",
-      "org:signatures:request",
-      "org:signatures:sign",
-      "org:drive:handoff",
-      "org:drive:request",
-      "org:mcp:access",
+    capabilities: [
+      "dept:hr",
+      "documents:list",
+      "documents:read",
+      "documents:search",
+      "signatures:request",
+      "signatures:read",
+      "signatures:nudge",
+      "drive:list",
+      "drive:handoff",
+      "drive:access",
+      "notes:create",
+      "mcp:access",
     ],
   },
   "org:member": {
     key: "org:member",
     name: "Member",
     description: "Basic access only",
-    permissions: [],
+    capabilities: [
+      "documents:list",
+      "documents:read",
+      "drive:list",
+      "drive:access",
+      "mcp:access",
+    ],
   },
 };
 

@@ -24,11 +24,11 @@ import {
 } from "./ui/sidebar"
 
 const defaultServices = [
-  { name: "Documents", logo: FileText, description: "Document management" },
-  { name: "Drive", logo: HardDrive, description: "File storage" },
-  { name: "Tasks", logo: Users, description: "Task management" },
-  { name: "Sign", logo: PenTool, description: "E-signatures" },
-  { name: "Admin", logo: Settings2, description: "System administration" },
+  { name: "Intake", logo: FileText, description: "Document intake & verification", url: "https://intake.daniellourie.me" },
+  { name: "Drive", logo: HardDrive, description: "File storage", url: "https://drive.daniellourie.me" },
+  { name: "Tasks", logo: Users, description: "Task management", url: "https://tasks.daniellourie.me" },
+  { name: "Sign", logo: PenTool, description: "E-signatures", url: "https://sign.daniellourie.me" },
+  { name: "Admin", logo: Settings2, description: "System administration", url: "https://admin.daniellourie.me" },
 ]
 
 const defaultNavItems = [
@@ -43,8 +43,8 @@ const defaultUser = {
 }
 
 export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  services?: { name: string; logo: React.ElementType; description: string }[]
-  navItems?: { title: string; url: string; icon?: LucideIcon; isActive?: boolean; items?: { title: string; url: string }[] }[]
+  services?: { name: string; logo: React.ElementType; description: string; url?: string }[]
+  navItems?: { title: string; url: string; icon?: LucideIcon; isActive?: boolean; onClick?: (e: React.MouseEvent) => void; items?: { title: string; url: string; onClick?: (e: React.MouseEvent) => void }[] }[]
   user?: { name: string; email: string; avatar: string }
   onSignOut?: () => void
 }
