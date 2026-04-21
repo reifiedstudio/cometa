@@ -9,7 +9,6 @@ export {
   signatureCard,
   taskCard,
   noteCard,
-  driveCard,
   linkCard,
   getDocumentCard,
   getServiceCard,

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@source "../src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -123,4 +124,51 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── Page loader animation ── */
+.cometa-loader-base { fill: #2a2a2f; }
+.cometa-loader-top { fill: oklch(0.72 0.17 95); }
+.cometa-loader-bottom { fill: oklch(0.72 0.17 28); }
+
+.cometa-loader-fill {
+  animation: ll-hue 3.2s linear infinite;
+}
+
+.cometa-loader-clip {
+  animation: ll-rise 1.8s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+}
+
+@keyframes ll-hue {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes ll-rise {
+  0% { y: 31.684px; }
+  100% { y: 7.566px; }
+}
+
+/* Animated dots */
+.cometa-dot {
+  opacity: 0;
+  animation: ll-dot 1.4s infinite;
+}
+.cometa-dot:nth-child(1) { animation-delay: 0s; }
+.cometa-dot:nth-child(2) { animation-delay: 0.2s; }
+.cometa-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ll-dot {
+  0%, 20% { opacity: 0; }
+  40% { opacity: 1; }
+  60%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cometa-loader-fill,
+  .cometa-loader-clip,
+  .cometa-dot {
+    animation: none !important;
+  }
+  .cometa-dot { opacity: 1; }
 }

@@ -24,7 +24,6 @@ const icons: Record<string, string> = {
   signature: `<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
   task: `<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 3V1M15 3V1M9 14l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
   note: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6M8 13h3M8 17h6" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
-  drive: `<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 2v7h7M12 18v-6M9 15l3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
   link: `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
 };
 
@@ -49,7 +48,6 @@ const cards: CardDef[] = [
   { name: "signature", label: "Signature Request", accent: "#ec4899", icon: "signature" },
   { name: "task", label: "Task", accent: "#f97316", icon: "task" },
   { name: "note", label: "Note", accent: "#06b6d4", icon: "note" },
-  { name: "drive", label: "Drive File", accent: "#22c55e", icon: "drive" },
   { name: "link", label: "Link Preview", accent: "#a855f7", icon: "link" },
 ];
 
@@ -130,7 +128,7 @@ async function main() {
   lines.push("}");
   lines.push("");
   lines.push("const serviceCardMap: Record<string, string> = {");
-  for (const card of cards.filter((c) => ["signature", "task", "note", "drive", "link", "document"].includes(c.name))) {
+  for (const card of cards.filter((c) => ["signature", "task", "note", "link", "document"].includes(c.name))) {
     lines.push(`  ${card.name}: ${card.name}Card,`);
   }
   lines.push("};");

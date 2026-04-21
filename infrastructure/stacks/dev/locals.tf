@@ -25,12 +25,6 @@ locals {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
   }
 
-  drive_secrets = {
-    CLERK_SECRET_KEY            = var.clerk_secret_key
-    GOOGLE_SERVICE_ACCOUNT_JSON = var.google_service_account_json
-    GOOGLE_ADMIN_EMAIL          = var.google_admin_email
-  }
-
   intake_api_secrets = {
     DATABASE_URL     = var.database_url
     OPENAI_API_KEY   = var.openai_api_key

@@ -7,7 +7,6 @@ import {
   FileText,
   PenTool,
   ListTodo,
-  HardDrive,
   Wrench,
   Network,
   Home,
@@ -42,7 +41,7 @@ const services: Service[] = [
     name: "Gateway",
     slug: "gateway",
     icon: Network,
-    description: "Core MCP tools — documents, drive, notes",
+    description: "Core MCP tools — documents, notes",
     hasDocs: true,
     tools: [
       { name: "list_intake_documents", description: "List all intake documents with optional type, status, and date filters", params: ["type?", "status?", "dateFrom?", "dateTo?"] },
@@ -51,8 +50,6 @@ const services: Service[] = [
       { name: "approve_intake_document", description: "Approve or deny an intake document after review", params: ["id", "status", "notes?"] },
       { name: "delete_intake_document", description: "Soft-delete an intake document", params: ["id"] },
       { name: "create_note", description: "Create a rich HTML note with optional PDF conversion", params: ["title", "html", "convertToPdf?"] },
-      { name: "list_drive_files", description: "List files and folders in Google Drive", params: ["folderId?", "query?"] },
-      { name: "search_drive", description: "Search files across Google Drive", params: ["query"] },
     ],
   },
   {
@@ -86,14 +83,6 @@ const services: Service[] = [
       { name: "get_trace", description: "Get all messages and tasks for a trace ID", params: ["traceId"] },
       { name: "start_agent_session", description: "Start a managed agent session for a task", params: ["department", "taskId", "message"] },
     ],
-  },
-  {
-    name: "Drive",
-    slug: "drive",
-    icon: HardDrive,
-    description: "Google Drive file management",
-    hasDocs: true,
-    tools: [],
   },
   {
     name: "Intake",

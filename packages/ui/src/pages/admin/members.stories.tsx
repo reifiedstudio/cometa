@@ -40,11 +40,11 @@ interface Role {
 
 const ROLES: Role[] = [
   { key: "org:admin", name: "Admin", description: "Full access to everything", capabilities: [], isAdmin: true },
-  { key: "org:accounting_member", name: "Accounting", description: "Financial operations, invoices, reports", capabilities: ["dept:accounting", "accounting:view", "accounting:manage", "documents:list", "documents:read", "documents:search", "drive:list", "drive:handoff", "drive:access", "notes:create", "mcp:access"] },
-  { key: "org:legal_member", name: "Legal", description: "Contracts, compliance, signatures", capabilities: ["dept:legal", "documents:list", "documents:read", "documents:search", "documents:approve", "signatures:request", "signatures:read", "signatures:cancel", "signatures:nudge", "signatures:manage", "signatures:audit", "drive:list", "drive:handoff", "drive:access", "notes:create", "utilities:create_document", "utilities:convert_pdf", "mcp:access"] },
-  { key: "org:operations_member", name: "Operations", description: "Business operations, documents", capabilities: ["dept:operations", "documents:list", "documents:read", "documents:search", "drive:list", "drive:access", "notes:create", "mcp:access"] },
-  { key: "org:hr_member", name: "HR", description: "People management, signatures", capabilities: ["dept:hr", "documents:list", "documents:read", "documents:search", "signatures:request", "signatures:read", "signatures:nudge", "drive:list", "drive:handoff", "drive:access", "notes:create", "mcp:access"] },
-  { key: "org:member", name: "Member", description: "Basic access only", capabilities: ["documents:list", "documents:read", "drive:list", "drive:access", "mcp:access"] },
+  { key: "org:accounting_member", name: "Accounting", description: "Financial operations, invoices, reports", capabilities: ["dept:accounting", "accounting:view", "accounting:manage", "documents:list", "documents:read", "documents:search", "notes:create", "mcp:access"] },
+  { key: "org:legal_member", name: "Legal", description: "Contracts, compliance, signatures", capabilities: ["dept:legal", "documents:list", "documents:read", "documents:search", "documents:approve", "signatures:request", "signatures:read", "signatures:cancel", "signatures:nudge", "signatures:manage", "signatures:audit", "notes:create", "utilities:create_document", "utilities:convert_pdf", "mcp:access"] },
+  { key: "org:operations_member", name: "Operations", description: "Business operations, documents", capabilities: ["dept:operations", "documents:list", "documents:read", "documents:search", "notes:create", "mcp:access"] },
+  { key: "org:hr_member", name: "HR", description: "People management, signatures", capabilities: ["dept:hr", "documents:list", "documents:read", "documents:search", "signatures:request", "signatures:read", "signatures:nudge", "notes:create", "mcp:access"] },
+  { key: "org:member", name: "Member", description: "Basic access only", capabilities: ["documents:list", "documents:read", "mcp:access"] },
 ];
 
 const CAPABILITIES: Capability[] = [
@@ -68,10 +68,6 @@ const CAPABILITIES: Capability[] = [
   { key: "tasks:action", name: "Act on tasks", domain: "tasks" },
   { key: "accounting:view", name: "View financials", domain: "accounting" },
   { key: "accounting:manage", name: "Manage financials", domain: "accounting" },
-  { key: "drive:create", name: "Create files", domain: "drive" },
-  { key: "drive:list", name: "List files", domain: "drive" },
-  { key: "drive:handoff", name: "Handoff files", domain: "drive" },
-  { key: "drive:access", name: "Manage file access", domain: "drive" },
   { key: "notes:create", name: "Create notes", domain: "notes" },
   { key: "utilities:create_document", name: "Create branded documents", domain: "utilities" },
   { key: "utilities:convert_pdf", name: "Convert to PDF", domain: "utilities" },

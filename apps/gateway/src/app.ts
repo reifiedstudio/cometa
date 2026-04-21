@@ -24,7 +24,6 @@ export function createApp(): Hono<GatewayEnv> {
     "https://notes.daniellourie.me",
     "https://intake.daniellourie.me",
     "https://admin.daniellourie.me",
-    "https://drive.daniellourie.me",
     "https://sign.daniellourie.me",
     "https://departments.daniellourie.me",
     "http://localhost:3000",
@@ -119,8 +118,6 @@ export function createApp(): Hono<GatewayEnv> {
   const INTAKE_API_URL = process.env["INTAKE_API_URL"] ?? "http://localhost:3006";
   const SIGNATURES_API_URL = process.env["SIGNATURES_API_URL"] ?? "http://localhost:3007";
   const TASKS_API_BASE_URL = process.env["TASKS_API_URL"] ?? "http://localhost:3005";
-  const DRIVE_API_URL = process.env["DRIVE_API_URL"] ?? "http://localhost:3004";
-
   // Proxy OpenAPI specs from downstream services
   app.get("/docs/intake/openapi", async (c) => {
     try {
@@ -152,16 +149,6 @@ export function createApp(): Hono<GatewayEnv> {
     }
   });
 
-  app.get("/docs/drive/openapi", async (c) => {
-    try {
-      const res = await fetch(`${DRIVE_API_URL}openapi`);
-      if (!res.ok) return c.json({ error: "Drive API spec unavailable" }, 502);
-      return c.json(await res.json());
-    } catch {
-      return c.json({ error: "Drive API unreachable" }, 502);
-    }
-  });
-
   // Scalar UIs for downstream services
   app.get(
     "/docs/intake",
@@ -184,14 +171,6 @@ export function createApp(): Hono<GatewayEnv> {
     apiReference({
       theme: "kepler",
       spec: { url: "/docs/tasks/openapi" },
-    }),
-  );
-
-  app.get(
-    "/docs/drive",
-    apiReference({
-      theme: "kepler",
-      spec: { url: "/docs/drive/openapi" },
     }),
   );
 
@@ -219,14 +198,6 @@ export function createApp(): Hono<GatewayEnv> {
       return c.json({ error: "Tasks unreachable" }, 502);
     }
   });
-
-  app.get("/mcp/tools/drive", (c) =>
-    c.json({
-      total: 0,
-      tools: [],
-      note: "Drive service does not have MCP tools yet — REST API only",
-    }),
-  );
 
   const UTILITIES_API_URL = process.env["UTILITIES_API_URL"] ?? "http://localhost:3008";
 
@@ -282,7 +253,6 @@ export function createApp(): Hono<GatewayEnv> {
   <a href="/mcp/explorer/gateway" class="${active === "gateway" ? "active" : ""}">Gateway</a>
   <a href="/mcp/explorer/signatures" class="${active === "signatures" ? "active" : ""}">Signatures</a>
   <a href="/mcp/explorer/tasks" class="${active === "tasks" ? "active" : ""}">Tasks</a>
-  <a href="/mcp/explorer/drive" class="${active === "drive" ? "active" : ""}">Drive</a>
   <a href="/mcp/explorer/utilities" class="${active === "utilities" ? "active" : ""}">Utilities</a>
 </div>`;
 
@@ -364,7 +334,7 @@ ${mcpToolListScript(endpoint)}
 <div class="container">
   <div class="service-card">
     <h3>Gateway</h3>
-    <p>Central MCP server — aggregates tools from all services. Document management, accounting, drive, and more.</p>
+    <p>Central MCP server — aggregates tools from all services. Document management, accounting, and more.</p>
     <div class="links">
       <a href="/mcp/explorer/gateway">MCP Tools</a>
       <a href="/docs">API Docs</a>
@@ -384,14 +354,6 @@ ${mcpToolListScript(endpoint)}
     <div class="links">
       <a href="/mcp/explorer/tasks">MCP Tools</a>
       <a href="/docs/tasks">API Docs</a>
-    </div>
-  </div>
-  <div class="service-card">
-    <h3>Drive</h3>
-    <p>Internal file management — Google Drive integration, file handoffs, and access control.</p>
-    <div class="links">
-      <a href="/mcp/explorer/drive">MCP Tools</a>
-      <a href="/docs/drive">API Docs</a>
     </div>
   </div>
   <div class="service-card">
@@ -424,9 +386,6 @@ ${mcpToolListScript(endpoint)}
   );
   app.get("/mcp/explorer/tasks", (c) =>
     c.html(mcpToolPage("Tasks Tools", "tasks", "/mcp/tools/tasks")),
-  );
-  app.get("/mcp/explorer/drive", (c) =>
-    c.html(mcpToolPage("Drive Tools", "drive", "/mcp/tools/drive")),
   );
   app.get("/mcp/explorer/utilities", (c) =>
     c.html(mcpToolPage("Utilities Tools", "utilities", "/mcp/tools/utilities")),

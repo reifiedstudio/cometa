@@ -2,9 +2,7 @@ import { db, schema } from "@cometa/db";
 import type { ProcessingMessage } from "@cometa/shared";
 import { eq } from "drizzle-orm";
 import { classifyAndExtract } from "./openai.js";
-import { getFileBuffer, uploadFile } from "./s3.js";
 import { extractText } from "./textract.js";
-import { generateThumbnail } from "./thumbnail.js";
 
 async function detectTypeFromHint(hint?: string): Promise<string | null> {
   if (!hint) return null;
@@ -36,28 +34,6 @@ export async function processDocument(payload: ProcessingMessage) {
   }
 
   try {
-    // Generate thumbnail if missing
-    const [doc] = await db
-      .select({ thumbnailKey: schema.documents.thumbnailKey })
-      .from(schema.documents)
-      .where(eq(schema.documents.id, documentId))
-      .limit(1);
-
-    if (!doc?.thumbnailKey) {
-      const file = await getFileBuffer(s3Key);
-      if (file) {
-        const thumb = await generateThumbnail(file.buffer, mimeType);
-        if (thumb) {
-          const thumbnailKey = `thumbnails/${s3Key.split("/").pop()}.jpg`;
-          await uploadFile(thumbnailKey, thumb, "image/jpeg");
-          await db
-            .update(schema.documents)
-            .set({ thumbnailUrl: `/api/files/${thumbnailKey}`, thumbnailKey })
-            .where(eq(schema.documents.id, documentId));
-        }
-      }
-    }
-
     // OCR
     const bucket = process.env.S3_BUCKET ?? "";
     const ocrText = await extractText(bucket, s3Key);

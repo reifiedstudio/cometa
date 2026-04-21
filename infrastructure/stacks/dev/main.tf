@@ -390,53 +390,6 @@ module "signatures_lambda" {
 }
 
 # ══════════════════════════════════════════════
-# Lambda — Drive API
-# ══════════════════════════════════════════════
-
-module "drive_lambda" {
-  source = "../../modules/lambda"
-
-  function_name = "${local.name_prefix}-drive"
-  description   = "Cometa Drive — Google Drive handoffs & access routing"
-
-  artifact_bucket_name = module.artifacts_bucket.bucket_id
-  code_s3_key          = "drive-api/drive-api.zip"
-
-  runtime         = "nodejs22.x"
-  handler         = "lambda.handler"
-  architectures   = ["arm64"]
-  memory_mb       = 256
-  timeout_seconds = 30
-
-  environment = merge(local.drive_secrets, {
-    NODE_ENV       = var.environment
-    DYNAMODB_TABLE = module.services_table.name
-    CORS_ORIGIN    = "https://${var.drive_ui_domain}"
-  })
-
-  inline_policy_json = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "DynamoDBServiceAccess"
-        Effect = "Allow"
-        Action = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
-        Resource = [
-          module.services_table.arn,
-          "${module.services_table.arn}/index/*"
-        ]
-      }
-    ]
-  })
-
-  create_function_url = true
-  cors_allow_headers  = ["content-type", "authorization", "accept"]
-  cors_max_age        = 3600
-
-  tags = local.common_tags
-}
-
-# ══════════════════════════════════════════════
 # Lambda — Tasks API (REST + MCP)
 # ══════════════════════════════════════════════
 
@@ -792,17 +745,6 @@ module "intake_site" {
   site_name      = "intake"
   bucket_name    = "${local.name_prefix}-${local.region_short}-intake-frontend"
   domain         = var.intake_domain
-  hosted_zone_id = var.mcp_hosted_zone_id
-  tags           = local.common_tags
-}
-
-module "drive_ui_site" {
-  source = "../../modules/static-site"
-
-  name_prefix    = local.name_prefix
-  site_name      = "drive-ui"
-  bucket_name    = "${local.name_prefix}-${local.region_short}-drive-ui"
-  domain         = var.drive_ui_domain
   hosted_zone_id = var.mcp_hosted_zone_id
   tags           = local.common_tags
 }

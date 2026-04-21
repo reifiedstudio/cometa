@@ -1,5 +1,4 @@
 @import "@cometa/ui/globals.css";
-@source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
 /* Intake-specific animations */
 @keyframes shimmer {

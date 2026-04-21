@@ -10,9 +10,7 @@ export default function AppLayout({
 }) {
   return (
     <AppClerkProvider>
-      <QueryProvider>
-        <div className="flex flex-1 flex-col min-h-0 w-full">{children}</div>
-      </QueryProvider>
+      <QueryProvider>{children}</QueryProvider>
     </AppClerkProvider>
   );
 }

@@ -117,28 +117,6 @@ output "task_worker_function" {
   value       = module.task_worker_lambda.function_name
 }
 
-# ── Drive ──
-
-output "drive_api_url" {
-  description = "Drive API Lambda function URL"
-  value       = module.drive_lambda.function_url
-}
-
-output "drive_ui_url" {
-  description = "Drive UI frontend URL"
-  value       = "https://${var.drive_ui_domain}"
-}
-
-output "drive_ui_bucket" {
-  description = "S3 bucket for drive UI static files"
-  value       = module.drive_ui_site.bucket_id
-}
-
-output "drive_ui_cloudfront_id" {
-  description = "CloudFront distribution ID for drive UI"
-  value       = module.drive_ui_site.cloudfront_id
-}
-
 # ── Intake ──
 
 output "intake_api_url" {

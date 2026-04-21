@@ -3,12 +3,12 @@
 import * as React from "react"
 import {
   FileText,
-  HardDrive,
+  Globe,
   PenTool,
   Settings2,
-  Users,
   StickyNote,
   Star,
+  Users,
   type LucideIcon,
 } from "lucide-react"
 
@@ -25,9 +25,10 @@ import {
 
 const defaultServices = [
   { name: "Intake", logo: FileText, description: "Document intake & verification", url: "https://intake.daniellourie.me" },
-  { name: "Drive", logo: HardDrive, description: "File storage", url: "https://drive.daniellourie.me" },
   { name: "Tasks", logo: Users, description: "Task management", url: "https://tasks.daniellourie.me" },
   { name: "Sign", logo: PenTool, description: "E-signatures", url: "https://sign.daniellourie.me" },
+  { name: "Notes", logo: StickyNote, description: "Internal wiki & reports", url: "https://notes.daniellourie.me" },
+  { name: "Gateway", logo: Globe, description: "MCP gateway & API docs", url: "https://gateway.daniellourie.me" },
   { name: "Admin", logo: Settings2, description: "System administration", url: "https://admin.daniellourie.me" },
 ]
 

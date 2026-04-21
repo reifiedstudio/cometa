@@ -30,13 +30,6 @@ export const TOOL_CAPABILITIES: Record<string, CapabilityKey> = {
   get_trace: "tasks:trace",
   start_agent_session: "tasks:agent",
 
-  // Drive
-  create_file: "drive:create",
-  list_department_files: "drive:list",
-  handoff_file: "drive:handoff",
-  request_file_access: "drive:access",
-  check_file_access: "drive:access",
-
   // Notes
   create_note: "notes:create",
 

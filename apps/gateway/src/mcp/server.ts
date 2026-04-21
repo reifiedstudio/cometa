@@ -63,12 +63,7 @@ UTILITIES: Use the utilities tools for document generation and PDF conversion:
 - create_branded_document: generates a professional branded PDF with company letterhead, signature blocks, and page numbers. Use for contracts, service agreements, NDAs, proposals, invoices, or any formal business document. Returns a download link directly — one tool call does everything.
 - convert_to_pdf: converts arbitrary HTML to PDF. For branded company documents, prefer create_branded_document.
 
-DRIVE: Use the drive tools (create_file, handoff_file, request_file_access, check_file_access, list_department_files) when the user wants to:
-- Create a new Google Doc, Sheet, Slides, or folder (optionally shared with a department)
-- Hand off a Google Drive file to another department
-- Request access to a file they can see but can't open
-- Check who has access to a file
-- List files shared with a department`,
+`,
     },
   );
 

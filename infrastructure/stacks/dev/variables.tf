@@ -103,12 +103,6 @@ variable "admin_domain" {
   default     = "admin.daniellourie.me"
 }
 
-variable "drive_ui_domain" {
-  description = "Custom domain for the drive frontend"
-  type        = string
-  default     = "drive.daniellourie.me"
-}
-
 variable "intake_domain" {
   description = "Custom domain for the documents frontend"
   type        = string
@@ -137,17 +131,4 @@ variable "gateway_ui_domain" {
   description = "Custom domain for the gateway UI frontend"
   type        = string
   default     = "gateway.daniellourie.me"
-}
-
-variable "google_service_account_json" {
-  description = "Google service account JSON (single-line) for Drive API"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "google_admin_email" {
-  description = "Google Workspace admin email for domain-wide delegation"
-  type        = string
-  default     = "daniel@reified.studio"
 }

@@ -8,13 +8,14 @@ INFRA_DIR="$APP_DIR/../../infrastructure/stacks/dev"
 echo "==> Building email-ingest for Lambda..."
 cd "$APP_DIR"
 bun build src/handler.ts \
-  --outfile dist/handler.mjs \
+  --outfile dist/handler.js \
   --target node \
   --minify
 
 echo "==> Packaging ZIP..."
+echo '{"type":"module"}' > dist/package.json
 cd dist
-zip -j "$APP_DIR/email-ingest.zip" handler.mjs
+zip -j "$APP_DIR/email-ingest.zip" handler.js package.json
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."

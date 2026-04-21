@@ -29,7 +29,6 @@ module "gateway_lambda" {
     AUTH_TABLE         = module.auth_table.name
     NOTES_BUCKET       = module.notes_content_bucket.bucket_id
     NOTES_DOMAIN       = var.notes_domain
-    DRIVE_API_URL      = module.drive_lambda.function_url
     INTAKE_API_URL     = module.intake_api_lambda.function_url
     SIGNATURES_API_URL = module.signatures_lambda.function_url
     SIGNATURES_MCP_URL = "${module.signatures_lambda.function_url}mcp"

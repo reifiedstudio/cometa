@@ -115,32 +115,6 @@ export const CAPABILITIES = {
     domain: "tasks",
   },
 
-  // ── Drive ──
-  "drive:create": {
-    key: "drive:create",
-    name: "Create files",
-    description: "Create Google Drive files and folders",
-    domain: "drive",
-  },
-  "drive:list": {
-    key: "drive:list",
-    name: "List files",
-    description: "List files shared with a department",
-    domain: "drive",
-  },
-  "drive:handoff": {
-    key: "drive:handoff",
-    name: "Handoff files",
-    description: "Hand off Drive files to departments",
-    domain: "drive",
-  },
-  "drive:access": {
-    key: "drive:access",
-    name: "Manage file access",
-    description: "Request and check file access",
-    domain: "drive",
-  },
-
   // ── Notes ──
   "notes:create": {
     key: "notes:create",

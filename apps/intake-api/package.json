@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "bun --env-file=../../.env --watch src/index.ts",
     "build": "bun build src/lambda.ts --outdir dist --target node --minify",
     "start": "bun dist/index.js",
     "seed": "bun scripts/seed.ts"
@@ -22,7 +22,6 @@
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.12",
     "hono-openapi": "^0.4.0",
-    "openai": "^6.33.0",
-    "sharp": "^0.34.5"
+    "openai": "^6.33.0"
   }
 }
