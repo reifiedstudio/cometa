@@ -1,30 +1,27 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { db, schema } from "@cometa/db";
 import type { ProcessingMessage } from "@cometa/shared";
+import { storage } from "@cometa/storage";
 import type { SESEvent } from "aws-lambda";
 import { simpleParser } from "mailparser";
 
-const region = process.env.AWS_REGION ?? "us-east-1";
-const s3 = new S3Client({ region });
-const sqs = new SQSClient({ region });
-const bucket = process.env.S3_BUCKET!;
+const sqs = new SQSClient({ region: process.env.AWS_REGION ?? "us-east-1" });
 const queueUrl = process.env.AWS_SQS_QUEUE_URL!;
 
 export async function handler(event: SESEvent) {
   for (const record of event.Records) {
     const messageId = record.ses.mail.messageId;
     const emailKey = `emails/${messageId}`;
-    console.log(`[email-ingest] Processing email: ${emailKey} from ${record.ses.mail.source}`);
+    console.log(`[email-ingest] Processing email: ${storage.fullKey(emailKey)} from ${record.ses.mail.source}`);
 
     try {
       // 1. Read raw email from S3 (saved by the SES S3 action)
-      const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: emailKey }));
-      const raw = await res.Body?.transformToString();
-      if (!raw) {
+      const file = await storage.getBuffer(emailKey);
+      if (!file) {
         console.error(`[email-ingest] Empty email body for ${emailKey}`);
         continue;
       }
+      const raw = file.buffer.toString("utf-8");
 
       // 2. Parse the email
       const parsed = await simpleParser(raw);
@@ -60,16 +57,8 @@ export async function handler(event: SESEvent) {
         const s3Key = `documents/${timestamp}-${filename}`;
 
         // Upload attachment to S3
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: s3Key,
-            Body: buffer,
-            ContentType: contentType,
-          }),
-        );
-
-        const s3Url = `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+        const s3Url = await storage.upload(s3Key, buffer, contentType);
+        const fullKey = storage.fullKey(s3Key);
 
         // Hash the file
         const hashBuffer = await crypto.subtle.digest("SHA-256", new Uint8Array(buffer));
@@ -86,7 +75,7 @@ export async function handler(event: SESEvent) {
             sizeBytes: buffer.length,
             fileHash,
             s3Url,
-            s3Key,
+            s3Key: fullKey,
             status: "processing",
             source: "email",
             senderEmail: from,
@@ -96,7 +85,7 @@ export async function handler(event: SESEvent) {
         // Push to processing queue
         const message: ProcessingMessage = {
           documentId: document.id,
-          s3Key,
+          s3Key: fullKey,
           mimeType: contentType,
           hint: subject,
         };
@@ -111,7 +100,7 @@ export async function handler(event: SESEvent) {
         console.log(`[email-ingest] Queued document ${document.id} from ${from}: ${filename}`);
       }
     } catch (err) {
-      console.error(`[email-ingest] Failed to process ${emailKey}:`, err);
+      console.error(`[email-ingest] Failed to process ${storage.fullKey(emailKey)}:`, err);
     }
   }
 }

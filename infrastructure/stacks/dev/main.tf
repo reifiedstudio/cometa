@@ -2,10 +2,12 @@
 # S3 Buckets
 # ══════════════════════════════════════════════
 
-module "intake_bucket" {
+# ── Unified private bucket (all services use prefixes) ──
+
+module "private_bucket" {
   source = "../../modules/s3"
 
-  bucket_name        = "${local.name_prefix}-${local.region_short}-intake"
+  bucket_name        = "${local.name_prefix}-private"
   versioning_enabled = true
 
   cors_rules = [
@@ -17,12 +19,12 @@ module "intake_bucket" {
     }
   ]
 
-  bucket_policy_json = data.aws_iam_policy_document.intake_bucket_policy.json
+  bucket_policy_json = data.aws_iam_policy_document.private_bucket_policy.json
 
   tags = local.common_tags
 }
 
-data "aws_iam_policy_document" "intake_bucket_policy" {
+data "aws_iam_policy_document" "private_bucket_policy" {
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"
@@ -32,8 +34,8 @@ data "aws_iam_policy_document" "intake_bucket_policy" {
     }
     actions = ["s3:*"]
     resources = [
-      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake",
-      "arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake/*",
+      module.private_bucket.bucket_arn,
+      "${module.private_bucket.bucket_arn}/*",
     ]
     condition {
       test     = "Bool"
@@ -50,7 +52,7 @@ data "aws_iam_policy_document" "intake_bucket_policy" {
       identifiers = ["ses.amazonaws.com"]
     }
     actions   = ["s3:PutObject"]
-    resources = ["arn:aws:s3:::${local.name_prefix}-${local.region_short}-intake/emails/*"]
+    resources = ["${module.private_bucket.bucket_arn}/intake/emails/*"]
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceAccount"
@@ -59,10 +61,44 @@ data "aws_iam_policy_document" "intake_bucket_policy" {
   }
 }
 
+# Per-prefix lifecycle rules
+resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
+  bucket = module.private_bucket.bucket_id
+
+  rule {
+    id     = "expire-temp-files"
+    status = "Enabled"
+    filter { prefix = "temp/" }
+    expiration { days = 7 }
+  }
+
+  rule {
+    id     = "archive-old-signatures"
+    status = "Enabled"
+    filter { prefix = "signatures/" }
+    transition {
+      days          = 365
+      storage_class = "GLACIER"
+    }
+  }
+}
+
+# ── Artifacts bucket (Lambda deployment zips — separate) ──
+
 module "artifacts_bucket" {
   source = "../../modules/s3"
 
   bucket_name        = "${local.name_prefix}-${local.region_short}-artifacts"
+  versioning_enabled = true
+  tags               = local.common_tags
+}
+
+# ── Old buckets kept during migration (delete after verified) ──
+
+module "intake_bucket" {
+  source = "../../modules/s3"
+
+  bucket_name        = "${local.name_prefix}-${local.region_short}-intake"
   versioning_enabled = true
   tags               = local.common_tags
 }
@@ -173,7 +209,7 @@ resource "aws_iam_role" "textract_service" {
 data "aws_iam_policy_document" "textract_s3_access" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${module.intake_bucket.bucket_arn}/*"]
+    resources = ["${module.private_bucket.bucket_arn}/*"]
   }
 }
 
@@ -207,7 +243,8 @@ module "intake_api_lambda" {
   timeout_seconds = 30
 
   environment = merge(local.intake_api_secrets, {
-    S3_BUCKET         = module.intake_bucket.bucket_id
+    S3_BUCKET         = module.private_bucket.bucket_id
+    S3_PREFIX         = "intake/"
     AWS_SQS_QUEUE_URL = module.processing_queue.queue_url
     CORS_ORIGIN       = "https://${var.intake_domain}"
   })
@@ -225,8 +262,8 @@ module "intake_api_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.intake_bucket.bucket_arn,
-          "${module.intake_bucket.bucket_arn}/*"
+          module.private_bucket.bucket_arn,
+          "${module.private_bucket.bucket_arn}/*"
         ]
       },
       {
@@ -279,7 +316,8 @@ module "intake_sqs_lambda" {
   timeout_seconds = 300
 
   environment = merge(local.intake_api_secrets, {
-    S3_BUCKET = module.intake_bucket.bucket_id
+    S3_BUCKET = module.private_bucket.bucket_id
+    S3_PREFIX = "intake/"
   })
 
   inline_policy_json = jsonencode({
@@ -295,8 +333,8 @@ module "intake_sqs_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.intake_bucket.bucket_arn,
-          "${module.intake_bucket.bucket_arn}/*"
+          module.private_bucket.bucket_arn,
+          "${module.private_bucket.bucket_arn}/*"
         ]
       },
       {
@@ -358,7 +396,8 @@ module "signatures_lambda" {
   timeout_seconds = 30
 
   environment = merge(local.signatures_secrets, {
-    SIGNATURES_S3_BUCKET = module.signatures_bucket.bucket_id
+    S3_BUCKET  = module.private_bucket.bucket_id
+    S3_PREFIX = "signatures/"
     CORS_ORIGIN          = "https://${var.intake_domain}"
   })
 
@@ -375,8 +414,8 @@ module "signatures_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.signatures_bucket.bucket_arn,
-          "${module.signatures_bucket.bucket_arn}/*"
+          module.private_bucket.bucket_arn,
+          "${module.private_bucket.bucket_arn}/*"
         ]
       }
     ]
@@ -584,7 +623,7 @@ module "task_worker_lambda" {
         Sid      = "S3DocumentRead"
         Effect   = "Allow"
         Action   = ["s3:GetObject"]
-        Resource = ["${module.intake_bucket.bucket_arn}/*"]
+        Resource = ["${module.private_bucket.bucket_arn}/*"]
       },
       {
         Sid    = "SSMServiceDiscovery"
@@ -638,7 +677,8 @@ module "email_ingest_lambda" {
 
   environment = {
     NODE_ENV          = var.environment
-    S3_BUCKET         = module.intake_bucket.bucket_id
+    S3_BUCKET         = module.private_bucket.bucket_id
+    S3_PREFIX         = "intake/"
     AWS_SQS_QUEUE_URL = module.processing_queue.queue_url
     DATABASE_URL      = local.gateway_secrets.DATABASE_URL
   }
@@ -650,7 +690,7 @@ module "email_ingest_lambda" {
         Sid      = "S3Access"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = ["${module.intake_bucket.bucket_arn}/*"]
+        Resource = ["${module.private_bucket.bucket_arn}/*"]
       },
       {
         Sid      = "SQSSend"
@@ -703,8 +743,8 @@ resource "aws_ses_receipt_rule" "inbound_docs" {
   recipients    = [var.inbound_email_domain]
 
   s3_action {
-    bucket_name       = module.intake_bucket.bucket_id
-    object_key_prefix = "emails/"
+    bucket_name       = module.private_bucket.bucket_id
+    object_key_prefix = "intake/emails/"
     position          = 1
   }
 

@@ -1,8 +1,8 @@
 # ── Shared ──
 
-output "intake_bucket" {
-  description = "S3 bucket for intake document storage"
-  value       = module.intake_bucket.bucket_id
+output "private_bucket" {
+  description = "Unified private S3 bucket for all services"
+  value       = module.private_bucket.bucket_id
 }
 
 output "textract_service_role_arn" {

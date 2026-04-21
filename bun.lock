@@ -64,9 +64,9 @@
     "apps/email-ingest": {
       "name": "@cometa/email-ingest",
       "dependencies": {
-        "@aws-sdk/client-s3": "^3.600.0",
         "@aws-sdk/client-sqs": "^3.1024.0",
         "@cometa/db": "*",
+        "@cometa/storage": "*",
         "mailparser": "^3.7.0",
       },
       "devDependencies": {
@@ -89,6 +89,7 @@
         "@cometa/renderer": "*",
         "@cometa/service-core": "*",
         "@cometa/shared": "*",
+        "@cometa/storage": "*",
         "@hono/mcp": "^0.2.5",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@scalar/hono-api-reference": "^0.5.0",
@@ -150,15 +151,14 @@
     "apps/intake-api": {
       "name": "@cometa/intake-api",
       "dependencies": {
-        "@aws-sdk/client-s3": "^3.1024.0",
         "@aws-sdk/client-sqs": "^3.1024.0",
         "@aws-sdk/client-textract": "^3.1024.0",
-        "@aws-sdk/s3-request-presigner": "^3.1024.0",
         "@clerk/backend": "^1.20.0",
         "@cometa/auth": "*",
         "@cometa/db": "*",
         "@cometa/email": "*",
         "@cometa/shared": "*",
+        "@cometa/storage": "*",
         "@scalar/hono-api-reference": "^0.5.184",
         "drizzle-orm": "^0.45.2",
         "hono": "^4.12.12",
@@ -251,13 +251,12 @@
     "apps/signatures-api": {
       "name": "@cometa/signatures-api",
       "dependencies": {
-        "@aws-sdk/client-s3": "^3.1024.0",
-        "@aws-sdk/s3-request-presigner": "^3.1024.0",
         "@clerk/backend": "^1.20.0",
         "@cometa/auth": "*",
         "@cometa/db": "*",
         "@cometa/email": "*",
         "@cometa/shared": "*",
+        "@cometa/storage": "*",
         "@hono/mcp": "^0.2.5",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@scalar/hono-api-reference": "^0.5.184",
@@ -432,6 +431,13 @@
       "name": "@cometa/shared",
       "dependencies": {
         "zod": "^4.3.6",
+      },
+    },
+    "packages/storage": {
+      "name": "@cometa/storage",
+      "dependencies": {
+        "@aws-sdk/client-s3": "^3.1024.0",
+        "@aws-sdk/s3-request-presigner": "^3.1024.0",
       },
     },
     "packages/ui": {
@@ -749,6 +755,8 @@
     "@cometa/signatures": ["@cometa/signatures@workspace:apps/signatures"],
 
     "@cometa/signatures-api": ["@cometa/signatures-api@workspace:apps/signatures-api"],
+
+    "@cometa/storage": ["@cometa/storage@workspace:packages/storage"],
 
     "@cometa/stream-router": ["@cometa/stream-router@workspace:apps/stream-router"],
 

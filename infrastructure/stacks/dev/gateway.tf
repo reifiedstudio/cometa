@@ -19,7 +19,7 @@ module "gateway_lambda" {
 
   environment = merge(local.gateway_secrets, {
     NODE_ENV           = var.environment
-    S3_BUCKET          = module.intake_bucket.bucket_id
+    S3_BUCKET          = module.private_bucket.bucket_id
     CORS_ORIGIN        = "https://${var.root_domain}"
     DYNAMODB_TABLE     = module.services_table.name
     ANTHROPIC_API_KEY  = var.anthropic_api_key
@@ -27,7 +27,9 @@ module "gateway_lambda" {
     TASKS_API_URL      = module.tasks_api_lambda.function_url
     TASKS_MCP_URL      = "${module.tasks_api_lambda.function_url}mcp"
     AUTH_TABLE         = module.auth_table.name
-    NOTES_BUCKET       = module.notes_content_bucket.bucket_id
+    NOTES_BUCKET       = module.private_bucket.bucket_id
+    S3_PREFIX          = "intake/"
+    NOTES_PREFIX       = "notes/"
     NOTES_DOMAIN       = var.notes_domain
     INTAKE_API_URL     = module.intake_api_lambda.function_url
     SIGNATURES_API_URL = module.signatures_lambda.function_url
@@ -49,8 +51,8 @@ module "gateway_lambda" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.intake_bucket.bucket_arn,
-          "${module.intake_bucket.bucket_arn}/*"
+          module.private_bucket.bucket_arn,
+          "${module.private_bucket.bucket_arn}/*"
         ]
       },
       {
@@ -101,8 +103,8 @@ module "gateway_lambda" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = [
-          module.notes_content_bucket.bucket_arn,
-          "${module.notes_content_bucket.bucket_arn}/*"
+          module.private_bucket.bucket_arn,
+          "${module.private_bucket.bucket_arn}/*"
         ]
       }
     ]

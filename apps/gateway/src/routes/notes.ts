@@ -1,11 +1,12 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createStorage } from "@cometa/storage";
 import { getNote, queryAllNotes, updateNote } from "@cometa/service-core";
 import { Hono } from "hono";
 import type { GatewayEnv } from "../lib/types.js";
 
-const s3 = new S3Client({});
-const NOTES_BUCKET = process.env["NOTES_BUCKET"] ?? "cometa-dev-use1-notes-content";
+const notesStorage = createStorage({
+  bucket: process.env["NOTES_BUCKET"],
+  prefix: process.env["NOTES_PREFIX"] ?? "notes/",
+});
 
 export const noteRoutes = new Hono<GatewayEnv>();
 
@@ -21,12 +22,7 @@ noteRoutes.get("/:id", async (c) => {
   const note = await getNote(id);
   if (!note) return c.json({ error: "Note not found" }, 404);
 
-  const command = new GetObjectCommand({
-    Bucket: NOTES_BUCKET,
-    Key: note.s3Key,
-  });
-  const contentUrl = await getSignedUrl(s3, command, { expiresIn: 900 });
-
+  const contentUrl = await notesStorage.getSignedUrl(note.s3Key, 900);
   return c.json({ ...note, contentUrl });
 });
 

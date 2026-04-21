@@ -86,8 +86,8 @@ requestRoutes.post(
       fileName = file.name;
       fileMimeType = file.type || "application/octet-stream";
       fileSizeBytes = buffer.length;
-      fileBucket = process.env.SIGNATURES_S3_BUCKET ?? "";
-      fileKey = `signatures/${Date.now()}-${file.name}`;
+      fileBucket = process.env.S3_BUCKET ?? "";
+      fileKey = `${process.env.S3_PREFIX ?? ""}signatures/${Date.now()}-${file.name}`;
 
       await uploadFile(fileKey, buffer, fileMimeType);
     } else if (body.fileHash) {

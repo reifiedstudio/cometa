@@ -19,6 +19,7 @@
     "@cometa/renderer": "*",
     "@cometa/agents": "*",
     "@cometa/service-core": "*",
+    "@cometa/storage": "*",
     "@cometa/mcp-apps": "*",
     "@cometa/shared": "*",
     "@hono/mcp": "^0.2.5",

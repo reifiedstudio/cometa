@@ -18,7 +18,8 @@ import { putNote } from "@cometa/service-core";
 import type { Note } from "@cometa/service-core";
 
 const DEFAULT_TABLE = "cometa-dev-services";
-const DEFAULT_BUCKET = "cometa-dev-use1-notes-content";
+const DEFAULT_BUCKET = "cometa-dev-private";
+const DEFAULT_PREFIX = "notes/";
 
 interface SeedNote {
   id: string;
@@ -116,6 +117,7 @@ async function main() {
     console.log(`(using default DYNAMODB_TABLE=${DEFAULT_TABLE})`);
   }
   const bucket = process.env.NOTES_BUCKET ?? DEFAULT_BUCKET;
+  const notesPrefix = process.env.NOTES_PREFIX ?? DEFAULT_PREFIX;
 
   const s3 = new S3Client({});
   const now = Date.now();
@@ -125,7 +127,7 @@ async function main() {
   for (const n of samples) {
     const createdAt = new Date(now - n.createdDaysAgo * 24 * 60 * 60 * 1000).toISOString();
     const updatedAt = new Date().toISOString();
-    const s3Key = `seed/${n.id}.html`;
+    const s3Key = `${notesPrefix}seed/${n.id}.html`;
 
     // Upload HTML content
     await s3.send(
