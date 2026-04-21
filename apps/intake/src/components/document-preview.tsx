@@ -3,7 +3,7 @@
 import { FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { API_URL } from "@/lib/api";
 
 function getFileUrl(s3Key: string) {
   return `${API_URL}/api/files/${s3Key}`;
