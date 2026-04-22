@@ -374,9 +374,9 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left - Document preview */}
-        <div className="w-[55%] p-6 overflow-y-auto bg-muted">
+        <div className="w-[55%] p-6 overflow-y-auto bg-muted/30">
           <div className="w-full max-w-[85%] mx-auto bg-card rounded-xl shadow-sm border overflow-hidden">
             <DocumentPreview
               previewUrl={(doc as any).previewUrl ?? null}
