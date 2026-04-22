@@ -1,4 +1,5 @@
 import { Body, Container, Head, Heading, Hr, Html, Preview, Text } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface ResubmitRequestProps {
   documentName: string;
@@ -15,6 +16,7 @@ export function ResubmitRequestEmail({
       <Preview>Please resubmit: {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>Resubmission Required</Heading>
           <Text style={text}>
             We were unable to process <strong>{documentName}</strong> properly.

@@ -9,6 +9,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface DocumentRejectedProps {
   documentName: string;
@@ -27,6 +28,7 @@ export function DocumentRejectedEmail({
       <Preview>Document rejected: {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>Document Rejected</Heading>
           <Text style={text}>
             The document <strong>{documentName}</strong> has been rejected and requires your

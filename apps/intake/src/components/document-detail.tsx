@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
@@ -190,6 +197,7 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
   const [rejecting, setRejecting] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [showOcrModal, setShowOcrModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -311,16 +319,9 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => handleClose()}>
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-          <div className="w-px h-5 bg-border" />
-          <span className="text-sm text-muted-foreground">Documents</span>
-          <ChevronRight size={14} className="text-muted-foreground/30" />
+      {/* Inline header */}
+      <div className="flex items-center justify-between px-4 py-1.5 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
           <h1 className="text-sm font-semibold text-foreground truncate max-w-[300px]">
             {doc.description || doc.id}
           </h1>
@@ -332,44 +333,34 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              "inline-flex items-center rounded-lg border overflow-hidden",
-              isLocked && "opacity-50 pointer-events-none",
-            )}
+        <div
+          className={cn(
+            "inline-flex items-center rounded-lg border overflow-hidden",
+            isLocked && "opacity-50 pointer-events-none",
+          )}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isLocked}
+            onClick={() => { setSelectedType(doc.type ?? null); setShowTypeModal(true); }}
+            className="rounded-none border-0 h-7 text-xs"
           >
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isLocked}
-              onClick={() => {
-                setSelectedType(doc.type ?? null);
-                setShowTypeModal(true);
-              }}
-              className="rounded-none border-0"
-            >
-              <FileText size={14} />
-              {typeLabels[doc.type ?? ""] ?? doc.type ?? "Unknown"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              disabled={isLocked}
-              onClick={async () => {
-                try {
-                  await reprocessDocument(doc.id);
-                  toast.success("Reprocessing started");
-                  loadDocument();
-                } catch {
-                  toast.error("Failed to reprocess");
-                }
-              }}
-              className="rounded-none border-0 border-l border-border"
-            >
-              <RotateCcw size={14} />
-            </Button>
-          </div>
+            <FileText size={12} />
+            {typeLabels[doc.type ?? ""] ?? doc.type ?? "Unknown"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={isLocked}
+            onClick={async () => {
+              try { await reprocessDocument(doc.id); toast.success("Reprocessing started"); loadDocument(); }
+              catch { toast.error("Failed to reprocess"); }
+            }}
+            className="rounded-none border-0 border-l border-border h-7 w-7"
+          >
+            <RotateCcw size={12} />
+          </Button>
         </div>
       </div>
 
@@ -663,20 +654,20 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
 
                 {/* OCR Text */}
                 {doc.ocrText && (
-                  <details className="group">
-                    <summary className="flex items-center gap-1.5 text-sm font-semibold text-foreground cursor-pointer hover:text-muted-foreground transition-colors">
-                      <ChevronRight
-                        size={14}
-                        className="transition-transform group-open:rotate-90"
-                      />
-                      OCR Text
-                    </summary>
-                    <div className="mt-2 bg-card rounded-xl border p-4">
-                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono max-h-[300px] overflow-y-auto">
-                        {doc.ocrText}
-                      </pre>
+                  <button
+                    type="button"
+                    onClick={() => setShowOcrModal(true)}
+                    className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-muted transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <FileText size={18} className="text-muted-foreground" />
                     </div>
-                  </details>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">OCR Text</p>
+                      <p className="text-xs text-muted-foreground truncate">View extracted text from document scan</p>
+                    </div>
+                    <ChevronRight size={16} className="text-muted-foreground/40 shrink-0" />
+                  </button>
                 )}
               </>
             )}
@@ -1112,6 +1103,21 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* OCR Text Modal */}
+      <Dialog open={showOcrModal} onOpenChange={setShowOcrModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>OCR Text</DialogTitle>
+            <DialogDescription>Extracted text from document scan</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1">
+            <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
+              {doc?.ocrText}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

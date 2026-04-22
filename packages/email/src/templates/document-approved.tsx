@@ -9,6 +9,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface DocumentApprovedProps {
   documentName: string;
@@ -27,6 +28,7 @@ export function DocumentApprovedEmail({
       <Preview>Document approved: {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>Document Approved</Heading>
           <Text style={text}>
             The {documentType} <strong>{documentName}</strong> has been reviewed and approved.

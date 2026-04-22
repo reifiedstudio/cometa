@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface SignatureRequestProps {
   documentName: string;
@@ -34,6 +35,7 @@ export function SignatureRequestEmail({
       </Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>Document Signature Required</Heading>
           <Text style={text}>
             <strong>{senderEmail}</strong> has sent you a {documentType} to review and sign:

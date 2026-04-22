@@ -9,6 +9,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface AllSignedProps {
   documentName: string;
@@ -26,6 +27,7 @@ export function AllSignedEmail({ documentName = "Document", signers = [] }: AllS
       <Preview>All signatures collected for {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>All Signatures Collected</Heading>
           <Text style={text}>
             All parties have signed <strong>{documentName}</strong>.

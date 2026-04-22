@@ -1,4 +1,5 @@
 import { Body, Container, Head, Heading, Hr, Html, Preview, Text } from "@react-email/components";
+import { EmailHeader } from "./email-header";
 
 interface OtpProps {
   otp: string;
@@ -11,6 +12,7 @@ export function OtpEmail({ otp = "000000" }: OtpProps) {
       <Preview>Your verification code is {otp}</Preview>
       <Body style={body}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={heading}>Verification Code</Heading>
           <Text style={text}>Enter this code to verify your identity and view the document:</Text>
           <Text style={code}>{otp}</Text>

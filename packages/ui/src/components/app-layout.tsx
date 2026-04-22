@@ -56,7 +56,7 @@ export function AppLayout({
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
+        <div className="flex flex-1 flex-col min-h-0 overflow-y-auto">
           {children}
         </div>
       </SidebarInset>
