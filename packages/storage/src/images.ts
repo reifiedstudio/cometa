@@ -67,7 +67,8 @@ export function createImageService(config: ImageServiceConfig = {}): ImageServic
       if (options?.q) params.set("q", String(options.q));
 
       const qs = params.toString();
-      const baseUrl = `https://${domain}/${key}${qs ? `?${qs}` : ""}`;
+      const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+      const baseUrl = `https://${domain}/${encodedKey}${qs ? `?${qs}` : ""}`;
 
       // Sign with CloudFront key pair
       const expires = new Date(Date.now() + expiresIn * 1000);
