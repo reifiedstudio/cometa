@@ -127,6 +127,12 @@ variable "assets_domain" {
   default     = "assets.daniellourie.me"
 }
 
+variable "images_domain" {
+  description = "Custom domain for the image resize service"
+  type        = string
+  default     = "images.daniellourie.me"
+}
+
 variable "gateway_ui_domain" {
   description = "Custom domain for the gateway UI frontend"
   type        = string

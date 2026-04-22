@@ -81,6 +81,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
       storage_class = "GLACIER"
     }
   }
+
+  rule {
+    id     = "expire-image-cache"
+    status = "Enabled"
+    filter { prefix = "cache/" }
+    expiration { days = 30 }
+  }
 }
 
 # ── Artifacts bucket (Lambda deployment zips — separate) ──
@@ -243,10 +250,13 @@ module "intake_api_lambda" {
   timeout_seconds = 30
 
   environment = merge(local.intake_api_secrets, {
-    S3_BUCKET         = module.private_bucket.bucket_id
-    S3_PREFIX         = "intake/"
-    AWS_SQS_QUEUE_URL = module.processing_queue.queue_url
-    CORS_ORIGIN       = "https://${var.intake_domain}"
+    S3_BUCKET          = module.private_bucket.bucket_id
+    S3_PREFIX          = "intake/"
+    AWS_SQS_QUEUE_URL  = module.processing_queue.queue_url
+    CORS_ORIGIN        = "https://${var.intake_domain}"
+    IMAGES_DOMAIN      = var.images_domain
+    IMAGES_KEYPAIR_ID  = aws_cloudfront_public_key.images.id
+    IMAGES_PRIVATE_KEY = tls_private_key.images.private_key_pem
   })
 
   inline_policy_json = jsonencode({

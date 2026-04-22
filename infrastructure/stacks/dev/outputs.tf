@@ -225,3 +225,20 @@ output "email_storybook_url" {
   description = "Email Storybook URL"
   value       = "https://${var.email_storybook_domain}"
 }
+
+# ── Image Resize Service ──
+
+output "image_resize_url" {
+  description = "Image resize Lambda function URL"
+  value       = module.image_resize_lambda.function_url
+}
+
+output "images_domain" {
+  description = "CloudFront domain for image resize service"
+  value       = "https://${var.images_domain}"
+}
+
+output "images_cloudfront_keypair_id" {
+  description = "CloudFront key pair ID for signing image URLs"
+  value       = aws_cloudfront_public_key.images.id
+}

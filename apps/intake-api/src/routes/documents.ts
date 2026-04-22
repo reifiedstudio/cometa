@@ -1,11 +1,45 @@
 import { db, schema } from "@cometa/db";
 import { DocumentRejectedEmail, sendEmail } from "@cometa/email";
+import { createImageService } from "@cometa/storage";
 import { and, asc, count, desc, eq, inArray, like, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { logAudit } from "../lib/audit.js";
 import { pushToProcessingQueue } from "../lib/queue.js";
 import type { DocumentsEnv } from "../lib/types.js";
+
+// Lazy-init image service (env vars may not be set at import time)
+let _images: ReturnType<typeof createImageService> | null = null;
+let _imagesInitAttempted = false;
+
+function getImageService() {
+  if (!_imagesInitAttempted) {
+    _imagesInitAttempted = true;
+    try {
+      _images = createImageService();
+      console.log("[images] Image service initialized");
+    } catch (err) {
+      console.error("[images] Failed to init image service:", err);
+      _images = null;
+    }
+  }
+  return _images;
+}
+
+function addPreviewUrl<T extends { s3Key: string; mimeType: string }>(doc: T) {
+  const images = getImageService();
+  if (!images || !doc.s3Key) return { ...doc, previewUrl: null };
+  if (!doc.mimeType?.startsWith("image/")) return { ...doc, previewUrl: null };
+  try {
+    return {
+      ...doc,
+      previewUrl: images.url(doc.s3Key, { w: 800 }),
+    };
+  } catch (err) {
+    console.error("[images] Failed to generate URL:", err);
+    return { ...doc, previewUrl: null };
+  }
+}
 
 export const documentRoutes = new Hono<DocumentsEnv>();
 
@@ -115,10 +149,12 @@ documentRoutes.get(
       }
     }
 
-    const documentsWithSignatures = documents.map((d) => ({
-      ...d,
-      signatureProgress: signatureProgress.get(d.id) ?? null,
-    }));
+    const documentsWithSignatures = documents.map((d) =>
+      addPreviewUrl({
+        ...d,
+        signatureProgress: signatureProgress.get(d.id) ?? null,
+      }),
+    );
 
     const totalResult = await db.select({ count: count() }).from(schema.documents);
 
@@ -170,7 +206,7 @@ documentRoutes.get(
       return c.json({ error: "Document not found" }, 404);
     }
 
-    return c.json(document);
+    return c.json(addPreviewUrl(document));
   },
 );
 

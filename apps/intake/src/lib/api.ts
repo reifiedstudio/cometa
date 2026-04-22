@@ -1,6 +1,6 @@
 const INTAKE_API_URL =
   process.env.NEXT_PUBLIC_INTAKE_API_URL ??
-  "https://imbarzzsijfb4a5dx5fqufgmai0uvfmy.lambda-url.us-east-1.on.aws";
+  "https://iyfodtaqfl4kicsieiooylg3zy0grrjd.lambda-url.us-east-1.on.aws";
 export const API_URL = INTAKE_API_URL;
 const SIGNATURES_API_URL =
   process.env.NEXT_PUBLIC_SIGNATURES_API_URL ??

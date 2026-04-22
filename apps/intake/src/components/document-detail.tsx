@@ -378,20 +378,11 @@ export default function DocumentDetail({ documentId, onClose }: DocumentDetailPr
         {/* Left - Document preview */}
         <div className="w-[55%] p-6 overflow-y-auto bg-muted">
           <div className="w-full max-w-[85%] mx-auto bg-card rounded-xl shadow-sm border overflow-hidden">
-            {doc.s3Key && doc.mimeType ? (
-              <DocumentPreview s3Key={doc.s3Key} mimeType={doc.mimeType} alt={doc.description} />
-            ) : doc.s3Key ? (
-              <img
-                src={`${API_URL}/api/files/${doc.s3Key}`}
-                alt={doc.description}
-                className="w-full"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                <FileText size={64} strokeWidth={1} />
-                <p className="text-sm mt-3">No preview available</p>
-              </div>
-            )}
+            <DocumentPreview
+              previewUrl={(doc as any).previewUrl ?? null}
+              mimeType={doc.mimeType ?? ""}
+              alt={doc.description}
+            />
           </div>
         </div>
 
