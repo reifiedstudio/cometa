@@ -27,14 +27,15 @@ function getImageService() {
 }
 
 function addPreviewUrl<T extends { s3Key: string; mimeType: string }>(doc: T) {
+  if (!doc.s3Key || !doc.mimeType?.startsWith("image/")) {
+    return { ...doc, previewUrl: null };
+  }
+
   const images = getImageService();
-  if (!images || !doc.s3Key) return { ...doc, previewUrl: null };
-  if (!doc.mimeType?.startsWith("image/")) return { ...doc, previewUrl: null };
+  if (!images) return { ...doc, previewUrl: null };
+
   try {
-    return {
-      ...doc,
-      previewUrl: images.url(doc.s3Key, { w: 800 }),
-    };
+    return { ...doc, previewUrl: images.url(doc.s3Key, { w: 800 }) };
   } catch (err) {
     console.error("[images] Failed to generate URL:", err);
     return { ...doc, previewUrl: null };
