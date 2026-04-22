@@ -1,0 +1,8 @@
+FROM public.ecr.aws/lambda/nodejs:22-arm64
+
+WORKDIR /build
+COPY package.json .
+RUN npm install --production
+COPY dist/handler.js .
+RUN echo '{"type":"module"}' > package.json
+RUN zip -r /out/image-resize.zip handler.js package.json node_modules/

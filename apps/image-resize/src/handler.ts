@@ -5,8 +5,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import resize from "@jsquash/resize";
+import { decode as decodePng } from "@jsquash/png";
+import { decode as decodeJpeg, encode as encodeJpeg } from "@jsquash/jpeg";
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import sharp from "sharp";
 
 const s3 = new S3Client({});
 const BUCKET = process.env.S3_BUCKET!;
@@ -20,7 +22,7 @@ const BUCKET = process.env.S3_BUCKET!;
  *   q  = JPEG quality 1-100 (default 80)
  *
  * No ?w param → 302 redirect to signed URL of original.
- * With ?w → resize, cache in S3 under cache/, 302 redirect to signed cache URL.
+ * With ?w → resize, cache in S3, 302 redirect to signed cache URL.
  */
 export async function handler(
   event: APIGatewayProxyEventV2,
@@ -38,8 +40,7 @@ export async function handler(
 
   // No resize → signed URL to original
   if (!width) {
-    const url = await sign(uri);
-    return redirect(url);
+    return redirect(await sign(uri));
   }
 
   // Clamp values
@@ -56,30 +57,60 @@ export async function handler(
   }
 
   // Read original
-  let original: Buffer;
+  let original: Uint8Array;
+  let contentType: string;
   try {
     const res = await s3.send(
       new GetObjectCommand({ Bucket: BUCKET, Key: uri }),
     );
     const bytes = await res.Body?.transformToByteArray();
     if (!bytes) return { statusCode: 404, body: "Not found" };
-    original = Buffer.from(bytes);
+    original = bytes;
+    contentType = res.ContentType ?? "image/jpeg";
   } catch {
     return { statusCode: 404, body: "Not found" };
   }
 
+  // Decode based on content type
+  let imageData: ImageData;
+  try {
+    if (contentType.includes("png")) {
+      imageData = await decodePng(original.buffer);
+    } else {
+      // Default to JPEG decoding for everything else
+      imageData = await decodeJpeg(original.buffer);
+    }
+  } catch (err) {
+    console.error("[resize] Failed to decode image:", err);
+    // Can't decode — return original
+    return redirect(await sign(uri));
+  }
+
+  // Calculate target dimensions preserving aspect ratio
+  let targetW = w;
+  let targetH = h ?? Math.round((imageData.height / imageData.width) * w);
+
+  // Don't upscale
+  if (targetW > imageData.width) {
+    targetW = imageData.width;
+    targetH = imageData.height;
+  }
+
   // Resize
-  const resized = await sharp(original)
-    .resize(w, h, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: q })
-    .toBuffer();
+  const resized = await resize(imageData, {
+    width: targetW,
+    height: targetH,
+  });
+
+  // Encode to JPEG
+  const output = await encodeJpeg(resized, { quality: q });
 
   // Save to cache
   await s3.send(
     new PutObjectCommand({
       Bucket: BUCKET,
       Key: cacheKey,
-      Body: resized,
+      Body: new Uint8Array(output),
       ContentType: "image/jpeg",
       CacheControl: "public, max-age=2592000",
     }),
