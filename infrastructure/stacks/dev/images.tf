@@ -20,6 +20,16 @@ resource "aws_cloudfront_key_group" "images" {
   items = [aws_cloudfront_public_key.images.id]
 }
 
+# ── Sharp Lambda Layer (committed to repo, never changes) ──
+
+resource "aws_lambda_layer_version" "sharp" {
+  layer_name               = "${local.name_prefix}-sharp-arm64"
+  filename                 = "${path.module}/../../layers/sharp-arm64.zip"
+  source_code_hash         = filebase64sha256("${path.module}/../../layers/sharp-arm64.zip")
+  compatible_runtimes      = ["nodejs22.x"]
+  compatible_architectures = ["arm64"]
+}
+
 # ── Resize Lambda ──
 
 module "image_resize_lambda" {
@@ -36,6 +46,7 @@ module "image_resize_lambda" {
   architectures   = ["arm64"]
   memory_mb       = 1024
   timeout_seconds = 30
+  layers          = [aws_lambda_layer_version.sharp.arn]
 
   environment = {
     S3_BUCKET = module.private_bucket.bucket_id

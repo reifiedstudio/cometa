@@ -7,31 +7,21 @@ INFRA_DIR="$APP_DIR/../../infrastructure/stacks/dev"
 
 echo "==> Building image-resize..."
 cd "$APP_DIR"
+rm -rf dist image-resize.zip
 bun run build
 
 echo "==> Packaging ZIP..."
 echo '{"type":"module"}' > dist/package.json
-cd dist
-zip -j "$APP_DIR/image-resize.zip" handler.js package.json
+cd dist && zip -j "$APP_DIR/image-resize.zip" handler.js package.json
 cd "$APP_DIR"
 
-echo "==> Getting artifacts bucket..."
-BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
-
-if [ -z "$BUCKET" ]; then
-  echo "ERROR: Could not get artifacts_bucket."
-  exit 1
-fi
-
-echo "==> Uploading to s3://$BUCKET/image-resize/..."
+echo "==> Uploading..."
+BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket)
 aws s3 cp image-resize.zip "s3://$BUCKET/image-resize/image-resize.zip"
 
 echo "==> Updating Lambda..."
-aws lambda update-function-code \
-  --function-name cometa-dev-image-resize \
-  --s3-bucket "$BUCKET" \
-  --s3-key image-resize/image-resize.zip \
-  --query 'CodeSize' --output text
+cd "$INFRA_DIR"
+terraform apply -target=module.image_resize_lambda -target=aws_lambda_layer_version.sharp -auto-approve
 
 echo ""
 echo "==> Deploy complete!"
