@@ -6,46 +6,48 @@ import {
   Hr,
   Html,
   Preview,
-  Section,
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-interface DocumentApprovedProps {
+interface SubmissionApprovedProps {
   documentName: string;
   documentType: string;
   approvedBy?: string;
 }
 
-export function DocumentApprovedEmail({
+export function SubmissionApprovedEmail({
   documentName = "Document",
   documentType = "document",
   approvedBy,
-}: DocumentApprovedProps) {
+}: SubmissionApprovedProps) {
   return (
     <Html>
       <Head />
-      <Preview>Document approved: {documentName}</Preview>
+      <Preview>Submission approved: {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
           <EmailHeader />
-          <Heading style={heading}>Document Approved</Heading>
+          <Heading style={heading}>Submission Approved</Heading>
           <Text style={text}>
-            The {documentType} <strong>{documentName}</strong> has been reviewed and approved.
+            Your {documentType} submission <strong>{documentName}</strong> has been reviewed and approved.
           </Text>
           {approvedBy && <Text style={text}>Approved by: {approvedBy}</Text>}
           <Hr style={hr} />
           <Text style={footer}>
-            No action is required from you. This is a confirmation that the document has been
+            No action is required from you. This is a confirmation that your submission has been
             processed.
           </Text>
-        <EmailFooter />
+          <EmailFooter />
         </Container>
       </Body>
     </Html>
   );
 }
+
+// Keep old name as alias for backwards compatibility
+export const DocumentApprovedEmail = SubmissionApprovedEmail;
 
 const body = {
   backgroundColor: "#f6f6f6",

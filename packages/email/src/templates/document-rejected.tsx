@@ -6,33 +6,32 @@ import {
   Hr,
   Html,
   Preview,
-  Section,
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-interface DocumentRejectedProps {
+interface SubmissionRejectedProps {
   documentName: string;
   reason?: string;
   reviewerNote?: string;
 }
 
-export function DocumentRejectedEmail({
+export function SubmissionRejectedEmail({
   documentName = "Document",
   reason,
   reviewerNote,
-}: DocumentRejectedProps) {
+}: SubmissionRejectedProps) {
   return (
     <Html>
       <Head />
-      <Preview>Document rejected: {documentName}</Preview>
+      <Preview>Submission rejected: {documentName}</Preview>
       <Body style={body}>
         <Container style={container}>
           <EmailHeader />
-          <Heading style={heading}>Document Rejected</Heading>
+          <Heading style={heading}>Submission Rejected</Heading>
           <Text style={text}>
-            The document <strong>{documentName}</strong> has been rejected and requires your
+            Your submission <strong>{documentName}</strong> has been rejected and requires your
             attention.
           </Text>
           {reason && (
@@ -52,12 +51,15 @@ export function DocumentRejectedEmail({
             Please resubmit a clearer version of this document. You can reply to this email or
             upload directly to Cometa.
           </Text>
-        <EmailFooter />
+          <EmailFooter />
         </Container>
       </Body>
     </Html>
   );
 }
+
+// Keep old name as alias for backwards compatibility
+export const DocumentRejectedEmail = SubmissionRejectedEmail;
 
 const body = {
   backgroundColor: "#f6f6f6",

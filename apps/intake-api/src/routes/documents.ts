@@ -1,5 +1,5 @@
 import { db, schema } from "@cometa/db";
-import { DocumentRejectedEmail, sendEmail } from "@cometa/email";
+import { SubmissionApprovedEmail, SubmissionRejectedEmail, sendEmail } from "@cometa/email";
 import { createImageService } from "@cometa/storage";
 import { and, asc, count, desc, eq, inArray, like, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
@@ -355,15 +355,27 @@ documentRoutes.patch(
       return c.json({ error: "Document not found" }, 404);
     }
 
-    // Send rejection email if status changed to rejected and sender email exists
-    if (body.status === "rejected" && body.notifySender && current.senderEmail) {
+    // Send notification emails on status change
+    if (current.senderEmail && body.status && body.status !== current.status) {
       const docName = current.description ?? current.originalName ?? "Document";
-      const reason = body.rejectionReason?.replace(/_/g, " ");
-      sendEmail({
-        to: current.senderEmail,
-        subject: `Document rejected: ${docName}`,
-        react: DocumentRejectedEmail({ documentName: docName, reason }),
-      }).catch((err) => console.error("[documents] Failed to send rejection email:", err));
+      const docType = current.type ?? "document";
+
+      if (body.status === "approved" || body.status === "reviewed") {
+        sendEmail({
+          to: current.senderEmail,
+          subject: `Submission approved: ${docName}`,
+          react: SubmissionApprovedEmail({ documentName: docName, documentType: docType }),
+        }).catch((err) => console.error("[documents] Failed to send approval email:", err));
+      }
+
+      if (body.status === "rejected" && body.notifySender) {
+        const reason = body.rejectionReason?.replace(/_/g, " ");
+        sendEmail({
+          to: current.senderEmail,
+          subject: `Submission rejected: ${docName}`,
+          react: SubmissionRejectedEmail({ documentName: docName, reason }),
+        }).catch((err) => console.error("[documents] Failed to send rejection email:", err));
+      }
     }
 
     return c.json(updated);

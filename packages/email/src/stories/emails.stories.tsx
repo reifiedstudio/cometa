@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import {
   AllSignedEmail,
-  DocumentApprovedEmail,
-  DocumentRejectedEmail,
+  SubmissionApprovedEmail,
+  SubmissionRejectedEmail,
   OtpEmail,
-  ResubmitRequestEmail,
   SignatureRequestEmail,
 } from "../index";
 import { EmailPreview } from "./email-preview";
@@ -18,12 +17,12 @@ const meta: Meta<typeof EmailPreview> = {
 export default meta;
 type Story = StoryObj<typeof EmailPreview>;
 
-export const DocumentApproved: Story = {
+export const SubmissionApproved: Story = {
   args: {
-    name: "Document Approved",
-    subject: "Your invoice was approved",
+    name: "Submission Approved",
+    subject: "Your invoice submission was approved",
     email: (
-      <DocumentApprovedEmail
+      <SubmissionApprovedEmail
         documentName="Invoice INV-2026-Q1-4521"
         documentType="invoice"
       />
@@ -31,27 +30,14 @@ export const DocumentApproved: Story = {
   },
 };
 
-export const DocumentRejected: Story = {
+export const SubmissionRejected: Story = {
   args: {
-    name: "Document Rejected",
-    subject: "Your invoice was rejected",
+    name: "Submission Rejected",
+    subject: "Your invoice submission was rejected",
     email: (
-      <DocumentRejectedEmail
+      <SubmissionRejectedEmail
         documentName="Invoice INV-2026-Q1-4521"
         reason="Amount mismatch — please resubmit with correct totals."
-      />
-    ),
-  },
-};
-
-export const ResubmitRequest: Story = {
-  args: {
-    name: "Resubmit Request",
-    subject: "Please resubmit your document",
-    email: (
-      <ResubmitRequestEmail
-        documentName="Eskom Bill — March 2026"
-        issue="The scan is too blurry to read the account number."
       />
     ),
   },
