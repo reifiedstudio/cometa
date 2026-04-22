@@ -1,6 +1,5 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
 import { statusLabels, typeLabels } from "@/lib/document-labels";
 import { AlertTriangle, Check, Clock, Eye, FileText, Loader, PenLine, X } from "lucide-react";
 
@@ -46,6 +45,7 @@ export interface DocumentListItem {
   status: string;
   date: string;
   thumbnailUrl?: string;
+  previewUrl?: string | null;
   signatureProgress?: { signed: number; total: number } | null;
 }
 
@@ -140,11 +140,7 @@ export default function DocumentList({
           {/* Documents */}
           {group.docs.map((doc) => {
             const isProcessing = doc.status === "processing";
-            const thumbSrc = doc.thumbnailUrl
-              ? doc.thumbnailUrl.startsWith("/")
-                ? `${API_URL}${doc.thumbnailUrl}`
-                : doc.thumbnailUrl
-              : null;
+            const thumbSrc = doc.previewUrl ?? doc.thumbnailUrl ?? null;
 
             return (
               <div

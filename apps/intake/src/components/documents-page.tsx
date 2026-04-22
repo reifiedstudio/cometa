@@ -8,7 +8,7 @@ import { FilterTabs } from "@/components/ui/filter-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import UploadModal from "@/components/upload-modal";
-import { API_URL, fetchDocuments } from "@/lib/api";
+import { fetchDocuments } from "@/lib/api";
 import { typePluralLabels } from "@/lib/document-labels";
 import type { Document } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
@@ -41,11 +41,8 @@ function mapApiDocToUi(apiDoc: any): Document {
         })
       : "",
     approved: apiDoc.status === "reviewed" || apiDoc.isVerified === true,
-    thumbnailUrl: apiDoc.thumbnailUrl
-      ? apiDoc.thumbnailUrl.startsWith("/")
-        ? `${API_URL}${apiDoc.thumbnailUrl}`
-        : apiDoc.thumbnailUrl
-      : undefined,
+    thumbnailUrl: apiDoc.thumbnailUrl ?? undefined,
+    previewUrl: apiDoc.previewUrl ?? null,
     extractedData: apiDoc.extractedData ?? undefined,
     aiSummary: apiDoc.aiSummary ?? undefined,
     ocrText: apiDoc.ocrText ?? undefined,
@@ -153,6 +150,7 @@ export default function DocumentsPage() {
             status: doc.status,
             date: doc.date,
             thumbnailUrl: doc.thumbnailUrl,
+            previewUrl: doc.previewUrl,
             signatureProgress: doc.signatureProgress,
           }))}
           loading={isLoading}

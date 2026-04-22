@@ -14,6 +14,7 @@ export interface Document {
   date: string;
   approved: boolean;
   thumbnailUrl?: string;
+  previewUrl?: string | null;
   s3Key?: string;
   mimeType?: string;
   originalName?: string;
