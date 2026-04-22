@@ -11,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface SignatureRequestProps {
   documentName: string;
@@ -56,6 +57,7 @@ export function SignatureRequestEmail({
             This link will expire in 7 days. If you did not expect this request, you can safely
             ignore this email.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>

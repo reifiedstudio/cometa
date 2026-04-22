@@ -1,5 +1,6 @@
 import { Body, Container, Head, Heading, Hr, Html, Preview, Text } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface OtpProps {
   otp: string;
@@ -21,6 +22,7 @@ export function OtpEmail({ otp = "000000" }: OtpProps) {
             This code expires in 10 minutes. If you did not request this, you can safely ignore this
             email.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>

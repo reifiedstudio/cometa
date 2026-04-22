@@ -10,6 +10,7 @@ import {
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface DocumentRejectedProps {
   documentName: string;
@@ -51,6 +52,7 @@ export function DocumentRejectedEmail({
             Please resubmit a clearer version of this document. You can reply to this email or
             upload directly to Cometa.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>

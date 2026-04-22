@@ -10,6 +10,7 @@ import {
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface AllSignedProps {
   documentName: string;
@@ -45,6 +46,7 @@ export function AllSignedEmail({ documentName = "Document", signers = [] }: AllS
             The document status has been updated to approved. You can view the signed document in
             Cometa.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>

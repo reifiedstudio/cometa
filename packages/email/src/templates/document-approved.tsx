@@ -10,6 +10,7 @@ import {
   Text,
 } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface DocumentApprovedProps {
   documentName: string;
@@ -39,6 +40,7 @@ export function DocumentApprovedEmail({
             No action is required from you. This is a confirmation that the document has been
             processed.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>

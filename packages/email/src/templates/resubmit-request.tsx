@@ -1,5 +1,6 @@
 import { Body, Container, Head, Heading, Hr, Html, Preview, Text } from "@react-email/components";
 import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface ResubmitRequestProps {
   documentName: string;
@@ -28,6 +29,7 @@ export function ResubmitRequestEmail({
             Please send a clearer photo or scan of this document by replying to this email or
             uploading directly.
           </Text>
+        <EmailFooter />
         </Container>
       </Body>
     </Html>
