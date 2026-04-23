@@ -57,55 +57,48 @@ function RequestDetailPage({
     queryFn: () => getSignatureRequest(requestId),
   });
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="size-4" />
-          Back to requests
-        </button>
+  const title = data?.sourceRef || `Request ${requestId.slice(0, 8)}`;
 
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            Back
+          </button>
+          <div className="w-px h-4 bg-border" />
+          <h1 className="text-sm font-semibold">{title}</h1>
+          {data?.status && (
+            <Badge className={cn("border text-[11px]", statusStyles[data.status] ?? statusStyles.pending)}>
+              {data.status}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-muted-foreground py-20 justify-center">
             <Loader2 className="size-4 animate-spin" />
             Loading...
           </div>
         ) : error ? (
-          <p className="text-muted-foreground">Failed to load signature request.</p>
+          <p className="text-muted-foreground text-center py-20">Failed to load signature request.</p>
         ) : (
           <>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-xl font-semibold">
-                  {data?.sourceRef || `Request ${requestId.slice(0, 8)}`}
-                </h1>
-                {data?.createdAt && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Created {formatDate(data.createdAt)}
-                  </p>
-                )}
-              </div>
-              {data?.status && (
-                <Badge className={cn("border", statusStyles[data.status] ?? statusStyles.pending)}>
-                  {data.status}
-                </Badge>
-              )}
-            </div>
-
             {/* Document card */}
-            <div className="rounded-lg border p-4 flex items-center justify-between mb-6">
+            <div className="rounded-lg border p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
                   <span className="text-xs font-bold text-red-600">PDF</span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">
-                    {data?.sourceRef || `Request ${requestId.slice(0, 8)}`}
-                  </p>
+                  <p className="text-sm font-medium">{title}</p>
                   {data?.createdAt && (
                     <p className="text-xs text-muted-foreground">
                       Uploaded {formatDate(data.createdAt)}
@@ -142,21 +135,24 @@ function RequestsListPage({
     queryFn: () => listSignatureRequests(),
   });
 
-  const requests = data ?? [];
+  const requests = Array.isArray(data) ? data : (data?.requests ?? []);
   const awaiting = requests.filter(
     (r: any) => r.status === "pending" || r.status === "partial",
   ).length;
   const completed = requests.filter((r: any) => r.status === "completed").length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Signature Requests</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track and manage document signatures
-        </p>
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+        <div>
+          <h1 className="text-lg font-semibold">Signature Requests</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Track and manage document signatures
+          </p>
+        </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Total Requests</p>
@@ -242,6 +238,7 @@ function RequestsListPage({
           </Table>
         </div>
       )}
+      </div>
     </div>
   );
 }
