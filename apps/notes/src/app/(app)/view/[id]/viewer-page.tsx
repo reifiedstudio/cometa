@@ -171,7 +171,7 @@ export default function ViewerPage() {
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : markdown ? (
-            <div className="mx-auto max-w-3xl px-6 py-8">
+            <div className="px-6 py-8">
               <MarkdownRenderer content={markdown} />
             </div>
           ) : null}
