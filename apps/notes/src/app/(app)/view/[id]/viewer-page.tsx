@@ -6,6 +6,7 @@ import { Button } from "@cometa/ui/ui/button";
 import { Separator } from "@cometa/ui/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@cometa/ui/ui/dropdown-menu";
 import { DetailPanel } from "@cometa/ui/detail-panel";
+import { FullPageLayout } from "@cometa/ui/full-page-layout";
 import { MarkdownRenderer, exportToHtml } from "@cometa/renderer";
 import { ArrowLeft, Download, PanelRight, Star, ChevronDown, FileText, Printer, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -83,7 +84,7 @@ export default function ViewerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <FullPageLayout>
       <header className="sticky top-0 z-10 border-b bg-background">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -186,6 +187,6 @@ export default function ViewerPage() {
           }}
         />
       </div>
-    </div>
+    </FullPageLayout>
   );
 }
