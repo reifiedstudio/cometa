@@ -26,9 +26,12 @@ const CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "
 function getIssuerUrl(c: {
   req: { url: string; header: (name: string) => string | undefined };
 }): string {
-  // CloudFront doesn't forward Host (Lambda rejects it), but we whitelist
-  // X-Forwarded-Host in the origin request policy so we can recover the real domain.
-  // CloudFront sends the real domain via a custom origin header
+  // Use the configured MCP domain (set in Terraform env vars)
+  const mcpDomain = process.env.MCP_DOMAIN;
+  if (mcpDomain) {
+    return `https://${mcpDomain}`;
+  }
+  // Fallback: try custom header or request URL
   const customDomain = c.req.header("x-custom-domain");
   if (customDomain) {
     return `https://${customDomain}`;

@@ -19,6 +19,7 @@ module "gateway_lambda" {
 
   environment = merge(local.gateway_secrets, {
     NODE_ENV           = var.environment
+    MCP_DOMAIN         = var.mcp_domain
     S3_BUCKET          = module.private_bucket.bucket_id
     CORS_ORIGIN        = "https://${var.root_domain}"
     DYNAMODB_TABLE     = module.services_table.name
