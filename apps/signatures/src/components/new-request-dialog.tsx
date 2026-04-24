@@ -161,7 +161,7 @@ export function NewRequestDialog({ open, onOpenChange, onCreated }: NewRequestDi
                 placeholder="email@example.com"
                 className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button variant="outline" size="sm" onClick={addSigner} className="shrink-0">
+              <Button variant="outline" onClick={addSigner} className="shrink-0 h-[38px]">
                 <Plus size={14} />
                 Add
               </Button>
