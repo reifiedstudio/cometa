@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@cometa/ui/ui/table";
 import { useQuery } from "@tanstack/react-query";
+import { NewRequestDialog } from "@/components/new-request-dialog";
 import {
   PenLine,
   CheckCircle2,
@@ -22,6 +23,7 @@ import {
   Loader2,
   ArrowLeft,
   Eye,
+  Plus,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -206,7 +208,8 @@ function RequestsListPage({
 }: {
   onSelectRequest: (id: string) => void;
 }) {
-  const { data, isLoading, error } = useQuery({
+  const [showNew, setShowNew] = useState(false);
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["signature-requests"],
     queryFn: () => listSignatureRequests(),
   });
@@ -226,7 +229,21 @@ function RequestsListPage({
             {awaitingCount} awaiting signature
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowNew(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
+        >
+          <Plus size={14} />
+          New Request
+        </button>
       </div>
+
+      <NewRequestDialog
+        open={showNew}
+        onOpenChange={setShowNew}
+        onCreated={() => refetch()}
+      />
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {isLoading ? (
