@@ -337,8 +337,18 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
         secretKey: process.env.CLERK_SECRET_KEY!,
       });
       userId = payload.sub;
-      userEmail = ((payload as Record<string, unknown>).email as string) ?? "";
-      userRole = ((payload as Record<string, unknown>).role as string) ?? "member";
+      userRole = ((payload as Record<string, unknown>).org_role as string) ?? ((payload as Record<string, unknown>).role as string) ?? "member";
+
+      // Clerk JWTs don't include email — look it up via backend API
+      try {
+        const { createClerkClient } = await import("@clerk/backend");
+        const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+        const clerkUser = await clerk.users.getUser(userId);
+        userEmail = clerkUser.primaryEmailAddress?.emailAddress ?? "";
+      } catch (err) {
+        console.warn("[oauth/complete] Failed to look up user email:", err);
+        userEmail = "";
+      }
     } catch (err) {
       console.error("[oauth/complete] Token verification failed:", err);
       return c.json({ error: "invalid_grant", error_description: "Invalid session token" }, 400);

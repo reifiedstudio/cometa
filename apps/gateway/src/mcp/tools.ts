@@ -286,7 +286,8 @@ Guidelines:
         const url = `https://${NOTES_DOMAIN}/view/${id}`;
 
         // Send confirmation email
-        if (ctx.user.email) {
+        console.log("[create_note] user email:", ctx?.user?.email || "(empty)");
+        if (ctx?.user?.email) {
           sendEmail({
             to: ctx.user.email,
             subject: `Note created: ${noteTitle}`,
