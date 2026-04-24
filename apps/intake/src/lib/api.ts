@@ -1,10 +1,10 @@
 const INTAKE_API_URL =
   process.env.NEXT_PUBLIC_INTAKE_API_URL ??
-  "https://iyfodtaqfl4kicsieiooylg3zy0grrjd.lambda-url.us-east-1.on.aws";
+  "https://mcp.daniellourie.me/api/intake";
 export const API_URL = INTAKE_API_URL;
 const SIGNATURES_API_URL =
   process.env.NEXT_PUBLIC_SIGNATURES_API_URL ??
-  "https://ortmehx5z6apdjfl3lfylhjzce0gvjdr.lambda-url.us-east-1.on.aws";
+  "https://mcp.daniellourie.me/api/signatures";
 // Token getter — set by the app layout once Clerk is available
 let _getToken: (() => Promise<string | null>) | null = null;
 

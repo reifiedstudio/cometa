@@ -1,6 +1,6 @@
 const SIGNATURES_API_URL =
   process.env.NEXT_PUBLIC_SIGNATURES_API_URL ??
-  "https://ortmehx5z6apdjfl3lfylhjzce0gvjdr.lambda-url.us-east-1.on.aws";
+  "https://mcp.daniellourie.me/api/signatures";
 
 let _getToken: (() => Promise<string | null>) | null = null;
 

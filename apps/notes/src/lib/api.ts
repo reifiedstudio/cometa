@@ -1,6 +1,6 @@
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ??
-  "https://tidgnwltqslwwpol45jzwtmgly0fcmen.lambda-url.us-east-1.on.aws";
+  "https://mcp.daniellourie.me";
 const NOTES_DOMAIN = process.env.NEXT_PUBLIC_NOTES_DOMAIN ?? "notes.daniellourie.me";
 
 export interface Note {
