@@ -23,6 +23,8 @@ locals {
     OPENAI_MODEL                      = var.openai_model
     CLERK_SECRET_KEY                  = var.clerk_secret_key
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
+    RESEND_API_KEY                    = var.resend_api_key
+    EMAIL_FROM                        = var.email_from
   }
 
   intake_api_secrets = {

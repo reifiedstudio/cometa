@@ -138,3 +138,15 @@ variable "gateway_ui_domain" {
   type        = string
   default     = "gateway.daniellourie.me"
 }
+
+variable "resend_api_key" {
+  description = "Resend API key for sending transactional emails"
+  type        = string
+  sensitive   = true
+}
+
+variable "email_from" {
+  description = "Default sender email address"
+  type        = string
+  default     = "Cometa <docs@daniellourie.me>"
+}
