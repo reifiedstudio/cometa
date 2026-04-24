@@ -19,7 +19,7 @@ zip -j "$APP_DIR/tasks-api.zip" lambda.js package.json
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."
-BUCKET=$(echo "==> Updating Lambda..." && cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
+BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
 
 if [ -z "$BUCKET" ]; then
   echo "ERROR: Could not get artifacts_bucket from Terraform output."
