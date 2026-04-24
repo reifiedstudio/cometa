@@ -259,7 +259,7 @@ export async function createAccessToken(params: {
   scopes?: string[];
 }): Promise<{ access_token: string; token_type: string; expires_in: number }> {
   const token = generateId(48);
-  const expiresIn = 3600; // 1 hour
+  const expiresIn = 43200; // 12 hours
   const expiresAt = ttlSeconds(expiresIn * 1000);
   await client.send(
     new PutCommand({
