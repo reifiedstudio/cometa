@@ -13,7 +13,17 @@ module "private_bucket" {
   cors_rules = [
     {
       allowed_methods = ["PUT", "POST", "GET"]
-      allowed_origins = ["http://localhost:3000", "https://${var.root_domain}"]
+      allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3004",
+        "http://localhost:3008",
+        "https://${var.root_domain}",
+        "https://${var.intake_domain}",
+        "https://${var.notes_domain}",
+        "https://${var.signatures_domain}",
+        "https://${var.admin_domain}",
+        "https://${var.tasks_domain}"
+      ]
       allowed_headers = ["*"]
       max_age_seconds = 3600
     }
