@@ -17,6 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import {
   PenLine,
+  CheckCircle2,
   ChevronRight,
   Loader2,
   ArrowLeft,
@@ -26,13 +27,15 @@ import { useState } from "react";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200/60",
-  partial: "bg-blue-50 text-blue-700 border-blue-200/60",
+  partially_signed: "bg-blue-50 text-blue-700 border-blue-200/60",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
   expired: "bg-muted text-muted-foreground border-border",
+  cancelled: "bg-muted text-muted-foreground border-border",
 };
 
 const navItems = [
   { title: "Requests", url: "/", icon: PenLine, isActive: true },
+  { title: "Completed", url: "/completed", icon: CheckCircle2 },
 ];
 
 function formatDate(date: string) {
@@ -91,7 +94,6 @@ function RequestDetailPage({
           <p className="text-muted-foreground text-center py-20">Failed to load signature request.</p>
         ) : (
           <>
-            {/* Document card */}
             <div className="rounded-lg border p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -123,7 +125,81 @@ function RequestDetailPage({
   );
 }
 
-// ── Requests List ──
+// ── Requests Table (shared) ──
+
+export function RequestsTable({
+  requests,
+  onSelect,
+}: {
+  requests: any[];
+  onSelect: (id: string) => void;
+}) {
+  if (!requests.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <PenLine className="size-8 mb-3 opacity-40" />
+        <p className="text-sm">No signature requests</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Document</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Signers</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead>Expires</TableHead>
+            <TableHead className="w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.map((req: any) => (
+            <TableRow
+              key={req.id}
+              className="cursor-pointer"
+              onClick={() => onSelect(req.id)}
+            >
+              <TableCell>
+                <span className="text-sm font-medium">
+                  {req.sourceRef || `Request ${req.id.slice(0, 8)}`}
+                </span>
+              </TableCell>
+              <TableCell>
+                <Badge className={cn("border text-[11px]", statusStyles[req.status] ?? statusStyles.pending)}>
+                  {req.status}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-muted-foreground">
+                  {req.signersCount ?? req.signers?.length ?? 0}
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {formatDate(req.createdAt)}
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {req.expiresAt ? formatDate(req.expiresAt) : "—"}
+                </span>
+              </TableCell>
+              <TableCell>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// ── Active Requests Page ──
 
 function RequestsListPage({
   onSelectRequest,
@@ -135,109 +211,36 @@ function RequestsListPage({
     queryFn: () => listSignatureRequests(),
   });
 
-  const requests = Array.isArray(data) ? data : (data?.requests ?? []);
-  const awaiting = requests.filter(
-    (r: any) => r.status === "pending" || r.status === "partial",
-  ).length;
-  const completed = requests.filter((r: any) => r.status === "completed").length;
+  const allRequests = Array.isArray(data) ? data : (data?.requests ?? []);
+  const requests = allRequests.filter(
+    (r: any) => r.status === "pending" || r.status === "partially_signed",
+  );
+  const awaitingCount = requests.length;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
         <div>
-          <h1 className="text-lg font-semibold">Signature Requests</h1>
+          <h1 className="text-lg font-semibold">Requests</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Track and manage document signatures
+            {awaitingCount} awaiting signature
           </p>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Total Requests</p>
-          <p className="text-2xl font-semibold mt-1">{requests.length}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Awaiting Signatures</p>
-          <p className="text-2xl font-semibold mt-1">{awaiting}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Completed</p>
-          <p className="text-2xl font-semibold mt-1">{completed}</p>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin mr-2" />
-          Loading...
-        </div>
-      ) : error ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          Failed to load signature requests.
-        </div>
-      ) : !requests.length ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <PenLine className="size-8 mb-3 opacity-40" />
-          <p className="text-sm">No signature requests yet</p>
-        </div>
-      ) : (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Document</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Signers</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((req: any) => (
-                <TableRow
-                  key={req.id}
-                  className="cursor-pointer"
-                  onClick={() => onSelectRequest(req.id)}
-                >
-                  <TableCell>
-                    <span className="text-sm font-medium">
-                      {req.sourceRef || req.id.slice(0, 8)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={cn("border", statusStyles[req.status] ?? statusStyles.pending)}
-                    >
-                      {req.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {req.signersCount ?? req.signers?.length ?? 0}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {formatDate(req.createdAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {req.expiresAt ? formatDate(req.expiresAt) : "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin mr-2" />
+            Loading...
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            Failed to load signature requests.
+          </div>
+        ) : (
+          <RequestsTable requests={requests} onSelect={onSelectRequest} />
+        )}
       </div>
     </div>
   );
