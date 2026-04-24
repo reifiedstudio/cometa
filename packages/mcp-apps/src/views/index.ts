@@ -1,1 +1,1 @@
-export { documentCardView, viewMap, getView } from "./generated.js";
+export { viewMap, getView } from "./generated.js";

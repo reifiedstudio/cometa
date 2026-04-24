@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cometa</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: transparent;
+      padding: 12px;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 420px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .logo {
+      width: 20px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .logo path { fill: #0f172a; }
+    .header-text {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-left: auto;
+    }
+    .card-body { padding: 20px; }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.4;
+    }
+    .card-subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .card-snippet {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.5;
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border-left: 3px solid var(--accent, #94a3b8);
+    }
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .card-actions {
+      padding: 14px 20px;
+      border-top: 1px solid #f3f4f6;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      color: #0f172a;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #f8fafc; }
+    .btn svg { width: 14px; height: 14px; }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 80px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">Loading...</div>
+  <div id="card" class="card" style="display:none">
+    <div class="card-header">
+      <svg class="logo" viewBox="169.921 7.566 18.388 24.118" xmlns="http://www.w3.org/2000/svg">
+        <path d="M188.309 31.6841H169.921V20.0364H176.609C183.076 20.0364 188.309 25.2502 188.309 31.677V31.6841Z"/>
+        <path d="M188.309 7.56566H169.921V19.2062H176.609C183.076 19.2062 188.309 13.9925 188.309 7.56566V7.56566Z"/>
+      </svg>
+      <span class="header-text">Cometa</span>
+      <span class="badge" id="badge"></span>
+    </div>
+    <div class="card-body">
+      <div class="card-title" id="title"></div>
+      <div class="card-subtitle" id="subtitle"></div>
+      <div class="card-snippet" id="snippet" style="display:none"></div>
+      <div class="card-meta" id="meta"></div>
+    </div>
+    <div class="card-actions" id="actions"></div>
+  </div>
+
+  <script>
+    var _id = 0;
+    function rpc(method, params) {
+      return { jsonrpc: "2.0", id: String(++_id), method: method, params: params };
+    }
+    function notify(method, params) {
+      return { jsonrpc: "2.0", method: method, params: params || {} };
+    }
+
+    var badgeColors = {
+      note:      { bg: "#eff6ff", color: "#3b82f6" },
+      document:  { bg: "#f0fdf4", color: "#16a34a" },
+      contract:  { bg: "#eff6ff", color: "#3b82f6" },
+      invoice:   { bg: "#ecfdf5", color: "#10b981" },
+      signature: { bg: "#f5f3ff", color: "#8b5cf6" },
+      task:      { bg: "#fef9c3", color: "#ca8a04" },
+      default:   { bg: "#f1f5f9", color: "#64748b" },
+    };
+
+    function renderCard(data) {
+      var card = document.getElementById("card");
+      var type = data.type || "default";
+      var colors = badgeColors[type] || badgeColors.default;
+
+      // Badge
+      var badge = document.getElementById("badge");
+      badge.textContent = data.badge || type;
+      badge.style.background = colors.bg;
+      badge.style.color = colors.color;
+
+      // Title + subtitle
+      document.getElementById("title").textContent = data.title || "Untitled";
+      var sub = document.getElementById("subtitle");
+      sub.textContent = data.subtitle || "";
+      sub.style.display = data.subtitle ? "block" : "none";
+
+      // Snippet
+      var snip = document.getElementById("snippet");
+      if (data.snippet) {
+        snip.textContent = data.snippet;
+        snip.style.display = "block";
+        snip.style.setProperty("--accent", colors.color);
+      }
+
+      // Meta
+      var meta = document.getElementById("meta");
+      var items = [];
+      if (data.meta) {
+        for (var k in data.meta) {
+          items.push("<span>" + k + ": <strong>" + data.meta[k] + "</strong></span>");
+        }
+      }
+      meta.innerHTML = items.join("");
+
+      // Actions
+      var actions = document.getElementById("actions");
+      var label = data.actionLabel || "Open";
+      var url = data.actionUrl || "";
+      actions.innerHTML = '<button class="btn" id="action-btn">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
+        '<polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+        label + '</button>';
+
+      if (url) {
+        document.getElementById("action-btn").addEventListener("click", function() {
+          window.parent.postMessage(rpc("ui/open-link", { url: url }), "*");
+        });
+      }
+
+      document.getElementById("loading").style.display = "none";
+      card.style.display = "block";
+      window.parent.postMessage(notify("ui/notifications/size-changed", {
+        height: document.body.scrollHeight + 24
+      }), "*");
+    }
+
+    window.addEventListener("message", function(ev) {
+      var msg = ev.data;
+      if (!msg || msg.jsonrpc !== "2.0") return;
+
+      if (msg.id && msg.result && msg.result.protocolVersion) {
+        window.parent.postMessage(notify("ui/notifications/initialized"), "*");
+        return;
+      }
+
+      if (msg.method === "ui/notifications/tool-result" && msg.params) {
+        var content = msg.params.content;
+        if (!content) return;
+        for (var i = 0; i < content.length; i++) {
+          if (content[i].type === "text" && content[i].text) {
+            try {
+              var d = JSON.parse(content[i].text);
+              if (d.title || d.type) { renderCard(d); return; }
+            } catch(e) {}
+          }
+        }
+      }
+
+      if (msg.method === "ui/notifications/tool-input" && msg.params && msg.params.arguments) {
+        var args = msg.params.arguments;
+        renderCard({
+          title: args.title || "Processing...",
+          type: args.type || "default",
+          badge: args.type || "working"
+        });
+      }
+    });
+
+    window.parent.postMessage(rpc("ui/initialize", {
+      appInfo: { name: "Cometa Card", version: "0.2.0" },
+      appCapabilities: {},
+      protocolVersion: "2026-01-26"
+    }), "*");
+  </script>
+</body>
+</html>

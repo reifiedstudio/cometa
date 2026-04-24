@@ -298,7 +298,19 @@ Guidelines:
           content: [
             {
               type: "text",
-              text: `Note created: ${url}\n\nTitle: ${noteTitle}\nExpires in 30 days.`,
+              text: JSON.stringify({
+                type: "note",
+                badge: "Note",
+                title: noteTitle,
+                subtitle: `Created just now · Expires in 30 days`,
+                snippet,
+                actionLabel: "View Note",
+                actionUrl: url,
+              }),
+            },
+            {
+              type: "text",
+              text: `Note created: [${noteTitle}](${url})\n\nExpires in 30 days.`,
             },
           ],
         };

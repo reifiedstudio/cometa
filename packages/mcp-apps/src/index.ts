@@ -1,12 +1,13 @@
-export { documentCardView, viewMap, getView } from "./views/index.js";
+export { viewMap, getView } from "./views/index.js";
 
 /**
  * Map of tool names → their ui:// resource URIs.
  * The gateway uses this to inject _meta.ui into tool descriptions.
  */
 export const toolUiMap: Record<string, string> = {
-  create_branded_document: "ui://cometa/document-card.html",
-  convert_to_pdf: "ui://cometa/document-card.html",
+  create_note: "ui://cometa/cometa-card.html",
+  create_branded_document: "ui://cometa/cometa-card.html",
+  convert_to_pdf: "ui://cometa/cometa-card.html",
 };
 
 /**
@@ -14,5 +15,5 @@ export const toolUiMap: Record<string, string> = {
  * The gateway uses this to resolve resources/read requests.
  */
 export const uriToViewMap: Record<string, string> = {
-  "ui://cometa/document-card.html": "document-card",
+  "ui://cometa/cometa-card.html": "cometa-card",
 };
