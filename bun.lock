@@ -85,6 +85,7 @@
         "@cometa/agents": "*",
         "@cometa/auth": "*",
         "@cometa/db": "*",
+        "@cometa/email": "*",
         "@cometa/mcp-apps": "*",
         "@cometa/renderer": "*",
         "@cometa/service-core": "*",

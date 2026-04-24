@@ -4,3 +4,4 @@ export { SubmissionRejectedEmail, DocumentRejectedEmail } from "./templates/docu
 export { SignatureRequestEmail } from "./templates/signature-request";
 export { OtpEmail } from "./templates/otp";
 export { AllSignedEmail } from "./templates/all-signed";
+export { NoteCreatedEmail } from "./templates/note-created";

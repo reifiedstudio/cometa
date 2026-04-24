@@ -16,6 +16,7 @@
     "@clerk/backend": "^1.20.0",
     "@cometa/auth": "*",
     "@cometa/db": "*",
+    "@cometa/email": "*",
     "@cometa/renderer": "*",
     "@cometa/agents": "*",
     "@cometa/service-core": "*",

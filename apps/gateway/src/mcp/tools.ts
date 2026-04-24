@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { NoteCreatedEmail, sendEmail } from "@cometa/email";
 import { putNote } from "@cometa/service-core";
 import { mdTaskSummary } from "@cometa/renderer/templates";
 import {
@@ -283,6 +284,16 @@ Guidelines:
         });
 
         const url = `https://${NOTES_DOMAIN}/view/${id}`;
+
+        // Send confirmation email
+        if (ctx.user.email) {
+          sendEmail({
+            to: ctx.user.email,
+            subject: `Note created: ${noteTitle}`,
+            react: NoteCreatedEmail({ title: noteTitle, snippet, viewUrl: url }),
+          }).catch((err) => console.error("[create_note] Failed to send email:", err));
+        }
+
         return {
           content: [
             {

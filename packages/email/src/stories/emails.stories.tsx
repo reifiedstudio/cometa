@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import {
   AllSignedEmail,
+  NoteCreatedEmail,
   SubmissionApprovedEmail,
   SubmissionRejectedEmail,
   OtpEmail,
@@ -77,5 +78,19 @@ export const Otp: Story = {
     name: "OTP Code",
     subject: "Your verification code",
     email: <OtpEmail otp="482917" />,
+  },
+};
+
+export const NoteCreated: Story = {
+  args: {
+    name: "Note Created",
+    subject: "Note created: World Coffee Guide",
+    email: (
+      <NoteCreatedEmail
+        title="World Coffee Guide — Beans, Brews & Culture"
+        snippet="A tour of the planet's best coffee cultures, beans, and brewing methods. Coffee is the second most traded commodity on Earth..."
+        viewUrl="https://notes.daniellourie.me/view/note-123"
+      />
+    ),
   },
 };
