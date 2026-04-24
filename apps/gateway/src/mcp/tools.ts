@@ -11,7 +11,8 @@ import {
 import type { ToolContext, ToolDef } from "./server.js";
 
 const s3 = new S3Client({});
-const NOTES_BUCKET = process.env["NOTES_BUCKET"] ?? "cometa-dev-use1-notes-content";
+const NOTES_BUCKET = process.env["NOTES_BUCKET"] ?? "cometa-dev-private";
+const NOTES_PREFIX = process.env["NOTES_PREFIX"] ?? "notes/";
 const NOTES_DOMAIN = process.env["NOTES_DOMAIN"] ?? "notes.daniellourie.me";
 
 export const localTools: ToolDef[] = [
@@ -242,7 +243,7 @@ Guidelines:
 
         const slug = templateName ?? "note";
         const id = `${slug}-${Date.now()}`;
-        const key = `${id}.md`;
+        const key = `${NOTES_PREFIX}${id}.md`;
 
         await s3.send(
           new PutObjectCommand({
