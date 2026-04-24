@@ -157,8 +157,8 @@ export default function ViewerPage() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
-        <div className="flex-1 overflow-y-auto">
+      <div className="flex h-[calc(100vh-3.5rem)] w-full">
+        <div className="flex-1 min-w-0 overflow-y-auto">
           {isLegacyHtml ? (
             <iframe
               src={note.contentUrl}
