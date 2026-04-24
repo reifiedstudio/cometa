@@ -165,19 +165,93 @@ export function createOAuthRoutes(): Hono<GatewayEnv> {
       state,
     });
 
-    // Decode the Clerk frontend API domain from the publishable key
-    const keyData = CLERK_PUBLISHABLE_KEY.replace(/^pk_(test|live)_/, "");
-    const clerkDomain = atob(keyData).replace(/\$$/, "");
-
     const issuer = getIssuerUrl(c);
-    const afterSignInUrl = `${issuer}/oauth/clerk-callback?oauth_state=${oauthState}`;
 
-    // Redirect to Clerk's Account Portal sign-in
-    // Dev: frontend API is <slug>.clerk.accounts.dev → Account Portal is <slug>.accounts.dev
-    const accountPortalDomain = clerkDomain.replace(".clerk.accounts.dev", ".accounts.dev");
-    const clerkSignInUrl = `https://${accountPortalDomain}/sign-in?redirect_url=${encodeURIComponent(afterSignInUrl)}`;
+    // Serve our own sign-in page that uses Clerk JS directly.
+    // This avoids Clerk Account Portal redirect_url restrictions in dev mode.
+    // If user is already signed in, it grabs the token immediately and completes.
+    const html = `<!DOCTYPE html>
+<html><head><title>Sign in — Cometa</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fafafa; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .container { text-align: center; }
+  .loading { color: #888; font-size: 14px; }
+  .error { color: #ef4444; margin-top: 16px; font-size: 14px; }
+  #clerk-signin { margin-top: 24px; }
+</style>
+</head><body>
+<div class="container">
+  <p class="loading" id="status">Loading...</p>
+  <p class="error" id="error" hidden></p>
+  <div id="clerk-signin"></div>
+</div>
+<script>
+(async () => {
+  const statusEl = document.getElementById("status");
+  const errorEl = document.getElementById("error");
 
-    return c.redirect(clerkSignInUrl);
+  try {
+    // Load Clerk JS
+    const script = document.createElement("script");
+    script.setAttribute("data-clerk-publishable-key", ${JSON.stringify(CLERK_PUBLISHABLE_KEY)});
+    script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+    script.crossOrigin = "anonymous";
+    document.head.appendChild(script);
+    await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = () => reject(new Error("Failed to load Clerk")); });
+
+    await window.Clerk.load();
+    const clerk = window.Clerk;
+
+    // If already signed in, complete immediately
+    if (clerk.session) {
+      statusEl.textContent = "Completing sign-in...";
+      const token = await clerk.session.getToken();
+      const res = await fetch("${issuer}/oauth/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_token: token, oauth_state: ${JSON.stringify(oauthState)} }),
+      });
+      const data = await res.json();
+      if (data.redirect_to) { window.location.href = data.redirect_to; return; }
+      errorEl.textContent = data.error_description || "Authentication failed";
+      errorEl.hidden = false;
+      statusEl.hidden = true;
+      return;
+    }
+
+    // Not signed in — mount Clerk sign-in component
+    statusEl.textContent = "Please sign in";
+    clerk.mountSignIn(document.getElementById("clerk-signin"), {
+      afterSignInUrl: window.location.href,
+    });
+
+    // Watch for sign-in completion
+    clerk.addListener(async ({ session }) => {
+      if (!session) return;
+      statusEl.textContent = "Completing sign-in...";
+      document.getElementById("clerk-signin").style.display = "none";
+      const token = await session.getToken();
+      const res = await fetch("${issuer}/oauth/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_token: token, oauth_state: ${JSON.stringify(oauthState)} }),
+      });
+      const data = await res.json();
+      if (data.redirect_to) { window.location.href = data.redirect_to; return; }
+      errorEl.textContent = data.error_description || "Authentication failed";
+      errorEl.hidden = false;
+      statusEl.hidden = true;
+    });
+  } catch (e) {
+    errorEl.textContent = e.message;
+    errorEl.hidden = false;
+    statusEl.hidden = true;
+  }
+})();
+</script>
+</body></html>`;
+
+    return c.html(html);
   });
 
   // ── Clerk Callback ──
