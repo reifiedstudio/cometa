@@ -34,7 +34,7 @@ zip -j "$APP_DIR/intake-sqs.zip" sqs-handler.js package.json
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."
-BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
+BUCKET=$(echo "==> Updating Lambda..." && cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
 
 if [ -z "$BUCKET" ]; then
   echo "ERROR: Could not get artifacts_bucket from Terraform output."
@@ -46,9 +46,9 @@ aws s3 cp intake-api.zip "s3://$BUCKET/intake-api/intake-api.zip"
 aws s3 cp intake-sqs.zip "s3://$BUCKET/intake-api/intake-sqs.zip"
 
 echo "==> Updating Lambda function code..."
-cd "$INFRA_DIR"
-terraform apply -target=module.intake_api_lambda -target=module.intake_sqs_lambda -auto-approve
+aws lambda update-function-code --function-name cometa-dev-intake-api --s3-bucket "$BUCKET" --s3-key intake-api/intake-api.zip --query 'CodeSize' --output text
+aws lambda update-function-code --function-name cometa-dev-intake-sqs --s3-bucket "$BUCKET" --s3-key intake-api/intake-sqs.zip --query 'CodeSize' --output text
 
 echo ""
 echo "==> Deploy complete!"
-echo "Intake API URL: $(terraform output -raw intake_api_url)"
+echo "Intake API URL: $(cd "$INFRA_DIR" && terraform output -raw intake_api_url)"

@@ -21,7 +21,7 @@ zip -j "$APP_DIR/utilities-api.zip" lambda.js package.json
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."
-BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
+BUCKET=$(echo "==> Updating Lambda..." && cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
 
 if [ -z "$BUCKET" ]; then
   echo "ERROR: Could not get artifacts_bucket from Terraform output."
@@ -32,9 +32,8 @@ echo "==> Uploading to s3://$BUCKET/utilities-api/utilities-api.zip..."
 aws s3 cp utilities-api.zip "s3://$BUCKET/utilities-api/utilities-api.zip"
 
 echo "==> Updating Lambda function code..."
-cd "$INFRA_DIR"
-terraform apply -target=module.utilities_lambda -auto-approve
+aws lambda update-function-code --function-name cometa-dev-utilities-api --s3-bucket "$BUCKET" --s3-key utilities-api/utilities-api.zip --query 'CodeSize' --output text
 
 echo ""
 echo "==> Deploy complete!"
-echo "Utilities API URL: $(terraform output -raw utilities_api_url)"
+echo "Utilities API URL: $(cd "$INFRA_DIR" && terraform output -raw utilities_api_url)"

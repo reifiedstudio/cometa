@@ -19,7 +19,7 @@ zip -j "$APP_DIR/email-ingest.zip" handler.js package.json
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."
-BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
+BUCKET=$(echo "==> Updating Lambda..." && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
 
 if [ -z "$BUCKET" ]; then
   echo "ERROR: Could not get artifacts_bucket from Terraform output."
@@ -30,8 +30,7 @@ echo "==> Uploading to s3://$BUCKET/email-ingest/email-ingest.zip..."
 aws s3 cp email-ingest.zip "s3://$BUCKET/email-ingest/email-ingest.zip"
 
 echo "==> Updating Lambda function code..."
-cd "$INFRA_DIR"
-terraform apply -target=module.email_ingest_lambda -auto-approve
+aws lambda update-function-code --function-name cometa-dev-email-ingest --s3-bucket "$BUCKET" --s3-key email-ingest/email-ingest.zip --query 'CodeSize' --output text
 
 echo ""
 echo "==> Deploy complete!"

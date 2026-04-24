@@ -24,7 +24,7 @@ zip -qr "$APP_DIR/pdf-converter.zip" handler.mjs package.json node_modules/
 cd "$APP_DIR"
 
 echo "==> Getting artifacts bucket name..."
-BUCKET=$(cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
+BUCKET=$(echo "==> Updating Lambda..." && cd "$INFRA_DIR" && terraform output -raw artifacts_bucket 2>/dev/null || echo "")
 
 if [ -z "$BUCKET" ]; then
   echo "ERROR: Could not get artifacts_bucket from Terraform output."
@@ -35,9 +35,8 @@ echo "==> Uploading to s3://$BUCKET/pdf-converter/pdf-converter.zip..."
 aws s3 cp pdf-converter.zip "s3://$BUCKET/pdf-converter/pdf-converter.zip"
 
 echo "==> Updating Lambda function code..."
-cd "$INFRA_DIR"
-terraform apply -target=module.pdf_converter_lambda -auto-approve
+aws lambda update-function-code --function-name cometa-dev-pdf-converter --s3-bucket "$BUCKET" --s3-key pdf-converter/pdf-converter.zip --query 'CodeSize' --output text
 
 echo ""
 echo "==> Deploy complete!"
-echo "PDF Converter URL: $(terraform output -raw pdf_converter_url)"
+echo "PDF Converter URL: $(cd "$INFRA_DIR" && terraform output -raw pdf_converter_url)"
