@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AppLayout } from "@cometa/ui/app-layout";
+import { AppPage } from "@cometa/ui/app-page";
 import { Badge } from "@cometa/ui/ui/badge";
 import {
   FileText,
@@ -184,9 +185,21 @@ export default function GatewayPage() {
       <AppLayout
         navItems={navItems}
       >
-        {view.type === "overview" && <OverviewPanel onNavigate={(type, slug) => setView({ type, slug })} />}
-        {view.type === "tools" && activeService && <ToolsPanel service={activeService} />}
-        {view.type === "docs" && activeService && <DocsPanel service={activeService} />}
+        {view.type === "overview" && (
+          <AppPage breadcrumbs={breadcrumbs} title="Gateway" description="Central MCP server and API gateway for all Cometa services">
+            <OverviewContent onNavigate={(type, slug) => setView({ type, slug })} />
+          </AppPage>
+        )}
+        {view.type === "tools" && activeService && (
+          <AppPage breadcrumbs={breadcrumbs} title={activeService.name} description={`${activeService.tools.length} MCP tools available`}>
+            <ToolsContent service={activeService} />
+          </AppPage>
+        )}
+        {view.type === "docs" && activeService && (
+          <AppPage breadcrumbs={breadcrumbs} title={activeService.name} description="Interactive API reference" noPadding>
+            <DocsContent service={activeService} />
+          </AppPage>
+        )}
       </AppLayout>
     </div>
   );
@@ -194,7 +207,7 @@ export default function GatewayPage() {
 
 // ── Panels ──
 
-function OverviewPanel({ onNavigate }: { onNavigate: (type: "tools" | "docs", slug: string) => void }) {
+function OverviewContent({ onNavigate }: { onNavigate: (type: "tools" | "docs", slug: string) => void }) {
   const totalTools = services.reduce((sum, s) => sum + s.tools.length, 0);
   const [copied, setCopied] = useState(false);
 
@@ -206,13 +219,6 @@ function OverviewPanel({ onNavigate }: { onNavigate: (type: "tools" | "docs", sl
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Gateway</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Central MCP server and API gateway for all Cometa services
-        </p>
-      </div>
-
       {/* MCP endpoint */}
       <div className="rounded-lg border p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -293,21 +299,11 @@ function OverviewPanel({ onNavigate }: { onNavigate: (type: "tools" | "docs", sl
   );
 }
 
-function ToolsPanel({ service }: { service: Service }) {
+function ToolsContent({ service }: { service: Service }) {
   const [expandedTool, setExpandedTool] = useState<string | null>(null);
-  const Icon = service.icon;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Icon className="size-5 text-muted-foreground" />
-        <div>
-          <h1 className="text-xl font-semibold">{service.name}</h1>
-          <p className="text-sm text-muted-foreground">{service.tools.length} MCP tools available</p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
+    <div className="space-y-2">
         {service.tools.map((tool) => {
           const isOpen = expandedTool === tool.name;
           return (
@@ -339,42 +335,20 @@ function ToolsPanel({ service }: { service: Service }) {
           );
         })}
       </div>
-    </div>
   );
 }
 
-function DocsPanel({ service }: { service: Service }) {
-  const Icon = service.icon;
+function DocsContent({ service }: { service: Service }) {
   const docsUrl = `${GATEWAY_URL}/docs/${service.slug}`;
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Icon className="size-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-xl font-semibold">{service.name}</h1>
-            <p className="text-sm text-muted-foreground">Interactive API reference</p>
-          </div>
-        </div>
-        <a
-          href={docsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
-        >
-          Open in new tab
-          <ExternalLink className="size-3.5" />
-        </a>
-      </div>
-
-      <div className="flex-1 rounded-lg border overflow-hidden min-h-[600px] bg-background">
-        <iframe
-          src={docsUrl}
-          title={`${service.name} API Docs`}
-          className="w-full h-full min-h-[600px] border-0"
-        />
-      </div>
+    <div className="flex-1 rounded-lg border overflow-hidden bg-background">
+      <iframe
+        src={docsUrl}
+        title={`${service.name} API Docs`}
+        className="w-full h-full border-0"
+        style={{ minHeight: "600px" }}
+      />
     </div>
   );
 }
