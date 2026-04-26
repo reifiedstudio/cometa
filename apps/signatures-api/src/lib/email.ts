@@ -1,7 +1,7 @@
 import { AllSignedEmail, OtpEmail, SignatureRequestEmail, sendEmail } from "@cometa/email";
 
 const APP_URL =
-  process.env.SIGNATURES_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  process.env.SIGNATURES_APP_URL ?? "https://sign.daniellourie.me";
 
 export async function sendSigningInvite(params: {
   signerEmail: string;
