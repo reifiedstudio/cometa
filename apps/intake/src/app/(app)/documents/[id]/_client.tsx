@@ -7,14 +7,7 @@ import { useParams } from "next/navigation";
 export default function DocumentPage() {
   const params = useParams();
   return (
-    <IntakeLayout
-      breadcrumbs={[
-        { label: "Intake" },
-        { label: "Documents", href: "/documents" },
-        { label: "Detail" },
-      ]}
-      active="documents"
-    >
+    <IntakeLayout active="documents">
       <DocumentDetail documentId={params.id as string} />
     </IntakeLayout>
   );

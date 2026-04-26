@@ -77,7 +77,7 @@ export default function MemberDetailClient() {
     const has = extras.includes(capKey);
     const updated = has ? extras.filter((c: string) => c !== capKey) : [...extras, capKey];
     try {
-      await member.update({
+      await (member as any).update({
         publicMetadata: { ...member.publicMetadata, extraCapabilities: updated },
       });
       memberships?.revalidate?.();
