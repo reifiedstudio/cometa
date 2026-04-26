@@ -62,14 +62,21 @@ export default function SignPage() {
 
   // Document viewing
   const [viewingDoc, setViewingDoc] = useState(false);
+  const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [showDocViewer, setShowDocViewer] = useState(false);
 
   const handleViewDocument = async () => {
+    if (docUrl) {
+      setShowDocViewer(true);
+      return;
+    }
     setViewingDoc(true);
     try {
       const res = await fetch(`${SIGN_API_URL}/sign/${token}/document`);
       if (!res.ok) throw new Error("Failed to load document");
       const result = await res.json();
-      window.open(result.url, "_blank");
+      setDocUrl(result.url);
+      setShowDocViewer(true);
     } catch {
       // ignore
     } finally {
@@ -415,6 +422,35 @@ export default function SignPage() {
           </p>
         </div>
       </div>
+
+      {/* Document viewer modal */}
+      {showDocViewer && docUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowDocViewer(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+              <p className="text-sm font-medium truncate">{data?.document.name}</p>
+              <button
+                type="button"
+                onClick={() => setShowDocViewer(false)}
+                className="p-1.5 rounded-md hover:bg-muted transition-colors"
+              >
+                <XCircle size={18} className="text-muted-foreground" />
+              </button>
+            </div>
+            <iframe
+              src={docUrl}
+              className="flex-1 w-full border-0"
+              title="Document viewer"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
