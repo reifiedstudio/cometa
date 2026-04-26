@@ -3,7 +3,7 @@ import { and, eq, lt, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { sendSigningInvite } from "../lib/email.js";
-import { uploadFile } from "../lib/s3.js";
+import { getPresignedUrl, uploadFile } from "../lib/s3.js";
 import {
   createSignatureRequest,
   getSignatureRequest,
@@ -166,7 +166,23 @@ requestRoutes.get(
     const limit = c.req.query("limit") ? Number(c.req.query("limit")) : undefined;
 
     const requests = await listSignatureRequests({ status, requestedBy, limit });
-    return c.json({ requests });
+
+    // Enrich with signer counts
+    const enriched = await Promise.all(
+      requests.map(async (req) => {
+        const signers = await db
+          .select({ id: schema.signers.id, status: schema.signers.status })
+          .from(schema.signers)
+          .where(eq(schema.signers.requestId, req.id));
+        return {
+          ...req,
+          signersCount: signers.length,
+          signedCount: signers.filter((s) => s.status === "signed").length,
+        };
+      }),
+    );
+
+    return c.json({ requests: enriched });
   },
 );
 
@@ -287,6 +303,40 @@ requestRoutes.patch(
 
     if (!updated) return c.json({ error: "Request not found" }, 404);
     return c.json({ id: updated.id, expiresAt: updated.expiresAt });
+  },
+);
+
+// GET /:id/document — Get presigned URL for the document
+requestRoutes.get(
+  "/:id/document",
+  describeRoute({
+    tags: ["Signature Requests"],
+    summary: "Get document presigned URL",
+    responses: {
+      200: {
+        description: "Presigned document URL",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: { url: { type: "string" }, mimeType: { type: "string" } },
+            },
+          },
+        },
+      },
+      404: { description: "Not found" },
+    },
+  }),
+  async (c) => {
+    const id = c.req.param("id");
+    const result = await getSignatureRequest(id);
+    if (!result) return c.json({ error: "Request not found" }, 404);
+
+    const file = result.files[0];
+    if (!file) return c.json({ error: "No document attached" }, 404);
+
+    const url = await getPresignedUrl(file.s3Key, 900);
+    return c.json({ url, mimeType: file.mimeType, fileName: file.originalName });
   },
 );
 

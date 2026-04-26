@@ -201,6 +201,29 @@ export async function verifySignerOtp(token: string, otp: string) {
   return { valid: true as const };
 }
 
+async function computeSignatureHash(params: {
+  documentHash: string;
+  signerEmail: string;
+  signerName: string;
+  signedAt: string;
+  ipAddress: string;
+}): Promise<string> {
+  const payload = [
+    params.documentHash,
+    params.signerEmail,
+    params.signerName,
+    params.signedAt,
+    params.ipAddress,
+  ].join("|");
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(payload),
+  );
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export async function completeSigning(params: {
   token: string;
   name: string;
@@ -217,14 +240,35 @@ export async function completeSigning(params: {
   if (signer.status === "signed") return null;
   if (signer.status === "pending") return null;
 
+  // Get the request to access the document hash
+  const [request] = await db
+    .select()
+    .from(schema.signatureRequests)
+    .where(eq(schema.signatureRequests.id, signer.requestId))
+    .limit(1);
+
+  if (!request) return null;
+
+  const signedAt = new Date();
+
+  // Compute signature hash: SHA-256(documentHash | email | name | timestamp | IP)
+  const signatureHash = await computeSignatureHash({
+    documentHash: request.documentHash,
+    signerEmail: signer.email,
+    signerName: params.name,
+    signedAt: signedAt.toISOString(),
+    ipAddress: params.ipAddress,
+  });
+
   const [updated] = await db
     .update(schema.signers)
     .set({
       status: "signed" as const,
       name: params.name,
-      signedAt: new Date(),
+      signedAt,
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
+      signatureHash,
       updatedAt: new Date(),
     })
     .where(eq(schema.signers.id, signer.id))
@@ -237,7 +281,7 @@ export async function completeSigning(params: {
 
   const allSigned = allSigners.every((s) => s.status === "signed");
 
-  const [request] = await db
+  const [updatedRequest] = await db
     .update(schema.signatureRequests)
     .set({
       status: allSigned ? ("completed" as const) : ("partially_signed" as const),
@@ -246,7 +290,7 @@ export async function completeSigning(params: {
     .where(eq(schema.signatureRequests.id, signer.requestId))
     .returning();
 
-  return { signer: updated, request, allSigned, allSigners };
+  return { signer: updated, request: updatedRequest, allSigned, allSigners };
 }
 
 export async function getSignatureRequestBySourceRef(sourceRef: string) {

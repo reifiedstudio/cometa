@@ -161,6 +161,13 @@ output "signatures_ui_cloudfront_id" {
   value       = module.signatures_site.cloudfront_id
 }
 
+# ── Notes API ──
+
+output "notes_api_url" {
+  description = "Notes API Lambda function URL"
+  value       = module.notes_api_lambda.function_url
+}
+
 # ── Utilities ──
 
 output "utilities_api_url" {

@@ -41,9 +41,9 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       displayHeaderFooter: true,
       headerTemplate: "<span></span>",
       footerTemplate: `
-        <div style="width: 100%; font-size: 8pt; color: #999; padding: 0 1.5cm; display: flex; justify-content: space-between;">
-          <span>${body.filename ?? "Document"}</span>
-          <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        <div style="width: 100%; font-size: 8pt; color: #999; padding: 0 1.5cm; display: flex; justify-content: space-between; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+          <span style="color: #717983;">Cometa</span>
+          <span style="color: #717983;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
         </div>
       `,
     });

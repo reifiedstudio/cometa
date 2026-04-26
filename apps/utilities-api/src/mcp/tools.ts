@@ -47,7 +47,7 @@ async function htmlToPdf(html: string, filename: string) {
   );
 
   const sizeKB = Math.round(pdfBuffer.byteLength / 1024);
-  return { downloadUrl, pdfFilename, sizeKB };
+  return { downloadUrl, pdfFilename, sizeKB, s3Key, s3Bucket: UTILITIES_BUCKET };
 }
 
 export function registerUtilitiesTools(server: McpServer): void {
@@ -92,12 +92,13 @@ IMPORTANT: The tool response includes a preview card image in markdown format. Y
       try {
         // TODO: load company details from org profile
         const company = {
-          name: "Reified Studio",
+          name: "Cometa",
+          logo: `${ASSETS_CDN_URL}/brand/cometa-wordmark.svg`,
           registrationNumber: "2024/123456/07",
           vatNumber: "4012345678",
           address: "123 Main Road, Cape Town, 8001",
-          email: "hello@reified.studio",
-          website: "reified.studio",
+          email: "hello@cometa.co",
+          website: "cometa.co",
         };
 
         const html = exportDocumentToHtml({
@@ -138,7 +139,7 @@ IMPORTANT: The tool response includes a preview card image in markdown format. Y
           content: [
             {
               type: "text" as const,
-              text: `Created branded PDF: **${pdf.pdfFilename}** (${pdf.sizeKB} KB)\n\nTitle: ${title}${reference ? `\nRef: ${reference}` : ""}${signerCount > 0 ? `\nSigners: ${signerCount}` : ""}${confidential ? "\nMarked confidential" : ""}\n\n[Download PDF](${pdf.downloadUrl})\n\nThis link expires in 24 hours.`,
+              text: `Created branded PDF: **${pdf.pdfFilename}** (${pdf.sizeKB} KB)\n\nTitle: ${title}${reference ? `\nRef: ${reference}` : ""}${signerCount > 0 ? `\nSigners: ${signerCount}` : ""}${confidential ? "\nMarked confidential" : ""}\n\n[Download PDF](${pdf.downloadUrl})\n\nThis link expires in 24 hours.\n\nTo send this for signing, use request_signature with fileS3Key="${pdf.s3Key}" and fileS3Bucket="${pdf.s3Bucket}".`,
             },
             {
               type: "text" as const,

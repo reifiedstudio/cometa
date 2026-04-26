@@ -9,13 +9,14 @@ import {
 } from "../index";
 import { EmailPreview } from "./email-preview";
 
-const meta: Meta<typeof EmailPreview> = {
-  title: "Emails",
+// ── Intake ──
+
+const intakeMeta: Meta<typeof EmailPreview> = {
+  title: "Intake",
   component: EmailPreview,
   parameters: { layout: "fullscreen" },
 };
-
-export default meta;
+export default intakeMeta;
 type Story = StoryObj<typeof EmailPreview>;
 
 export const SubmissionApproved: Story = {
@@ -39,57 +40,6 @@ export const SubmissionRejected: Story = {
       <SubmissionRejectedEmail
         documentName="Invoice INV-2026-Q1-4521"
         reason="Amount mismatch — please resubmit with correct totals."
-      />
-    ),
-  },
-};
-
-export const SignatureRequest: Story = {
-  args: {
-    name: "Signature Request",
-    subject: "You've been asked to sign a document",
-    email: (
-      <SignatureRequestEmail
-        documentName="NDA — Acme Corp"
-        documentType="contract"
-      />
-    ),
-  },
-};
-
-export const AllSigned: Story = {
-  args: {
-    name: "All Signed",
-    subject: "All parties have signed",
-    email: (
-      <AllSignedEmail
-        documentName="NDA — Acme Corp"
-        signers={[
-          { name: "Sarah Chen", email: "sarah@acme.com" },
-          { name: "James Park", email: "james@reified.dev" },
-        ]}
-      />
-    ),
-  },
-};
-
-export const Otp: Story = {
-  args: {
-    name: "OTP Code",
-    subject: "Your verification code",
-    email: <OtpEmail otp="482917" />,
-  },
-};
-
-export const NoteCreated: Story = {
-  args: {
-    name: "Note Created",
-    subject: "Note created: World Coffee Guide",
-    email: (
-      <NoteCreatedEmail
-        title="World Coffee Guide — Beans, Brews & Culture"
-        snippet="A tour of the planet's best coffee cultures, beans, and brewing methods. Coffee is the second most traded commodity on Earth..."
-        viewUrl="https://notes.daniellourie.me/view/note-123"
       />
     ),
   },

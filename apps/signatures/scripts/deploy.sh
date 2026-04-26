@@ -19,6 +19,13 @@ if [ -z "$BUCKET" ]; then
   exit 1
 fi
 
+echo "==> Setting up dynamic route fallbacks..."
+# Copy placeholder pages so CloudFront can serve them for any dynamic path.
+# Next.js static export only builds /request/_/ but we need /request/*/  to work.
+if [ -f out/request/_/index.html ]; then
+  cp out/request/_/index.html out/request/index.html
+fi
+
 echo "==> Syncing to s3://$BUCKET..."
 aws s3 sync out/ "s3://$BUCKET" --delete
 

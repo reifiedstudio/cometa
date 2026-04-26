@@ -37,5 +37,13 @@ locals {
   signatures_secrets = {
     DATABASE_URL     = var.database_url
     CLERK_SECRET_KEY = var.clerk_secret_key
+    RESEND_API_KEY   = var.resend_api_key
+    EMAIL_FROM       = var.email_from
+  }
+
+  notes_api_secrets = {
+    CLERK_SECRET_KEY = var.clerk_secret_key
+    RESEND_API_KEY   = var.resend_api_key
+    EMAIL_FROM       = var.email_from
   }
 }

@@ -405,16 +405,20 @@ ${mcpToolListScript(endpoint)}
     const TASKS_MCP_URL =
       process.env["TASKS_MCP_URL"] ??
       "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws/mcp";
+    const NOTES_MCP_URL = process.env["NOTES_MCP_URL"] ?? "";
 
     const catalog = localTools.map((t) => ({ name: t.name, description: t.description }));
 
-    try {
-      const upstream = await getUpstreamTools(TASKS_MCP_URL);
-      for (const t of upstream) {
-        catalog.push({ name: t.name, description: t.description ?? "" });
+    for (const url of [TASKS_MCP_URL, NOTES_MCP_URL]) {
+      if (!url) continue;
+      try {
+        const upstream = await getUpstreamTools(url);
+        for (const t of upstream) {
+          catalog.push({ name: t.name, description: t.description ?? "" });
+        }
+      } catch {
+        /* proxy error is captured in getProxyStatus */
       }
-    } catch {
-      /* proxy error is captured in getProxyStatus */
     }
 
     const proxyError = getProxyStatus();

@@ -32,6 +32,7 @@ const TASKS_MCP_URL =
 
 const SIGNATURES_MCP_URL = process.env["SIGNATURES_MCP_URL"] ?? "";
 const UTILITIES_MCP_URL = process.env["UTILITIES_MCP_URL"] ?? "";
+const NOTES_MCP_URL = process.env["NOTES_MCP_URL"] ?? "";
 
 /** MIME type for MCP App UI resources */
 const UI_RESOURCE_MIME = "text/html;profile=mcp-app";
@@ -55,7 +56,7 @@ Use the Cometa tools whenever the user asks about:
 When the user says "my documents", "my invoices", etc., always use the Cometa tools — never try to access local files.
 To send work to a department (e.g. "review this invoice"), use send_message — the department's AI agent will handle it.
 
-SIGNATURES: Use the signature tools (request_signature, get_signature_status, list_signature_requests, nudge_signer, cancel_signature_request) when the user wants to send documents for signing, check signing progress, or manage signature workflows.
+SIGNATURES: Use the signature tools (get_signature_status, list_signature_requests, nudge_signer, cancel_signature_request) to check signing progress, nudge signers, or cancel requests. Signature requests with documents must be created through the Signatures UI — direct the user to the signatures app to upload and send documents for signing.
 
 NOTES: Use the create_note tool when the user asks to see, show, or share reports and summaries. It generates a shareable link to a styled page with markdown tables and Mermaid charts. Notes can be downloaded or printed to PDF. They expire after 30 days. Pass raw markdown content with chart blocks. Always prefer create_note over inline text for reports — notes are shareable and look professional.
 
@@ -132,6 +133,36 @@ UTILITIES: Use the utilities tools for document generation and PDF conversion:
       }
     } catch (err) {
       console.warn("[proxy] Failed to discover utilities tools:", err);
+    }
+  }
+
+  // Discover upstream tools from notes service
+  if (NOTES_MCP_URL) {
+    try {
+      const upstream = await getUpstreamTools(NOTES_MCP_URL);
+      console.log(`[proxy] Discovered ${upstream.length} tools from notes`);
+      for (const t of upstream) {
+        toolMap.set(t.name, {
+          name: t.name,
+          description: t.description ?? "",
+          inputSchema: t.inputSchema ?? { type: "object", properties: {} },
+          handler: async (args) => {
+            // Inject user context so notes-api can attribute notes and send emails
+            const enriched = {
+              ...args,
+              ...(user && {
+                _user_id: user.id,
+                _user_email: user.email,
+                _user_org_id: user.orgId,
+              }),
+            };
+            const result = await callUpstreamTool(NOTES_MCP_URL, t.name, enriched);
+            return result as any;
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[proxy] Failed to discover notes tools:", err);
     }
   }
 

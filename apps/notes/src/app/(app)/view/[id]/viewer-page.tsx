@@ -62,11 +62,7 @@ export default function ViewerPage() {
   }, [note?.contentUrl, isLegacyHtml]);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return null;
   }
 
   if (error || !note) {
@@ -88,7 +84,7 @@ export default function ViewerPage() {
       <header className="sticky top-0 z-10 border-b bg-background">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Button variant="ghost" size="sm" className="gap-2" render={<Link href="/" />}>
+            <Button variant="ghost" size="sm" className="gap-2" nativeButton={false} render={<Link href="/" />}>
               <ArrowLeft className="size-4" />
               Notes
             </Button>

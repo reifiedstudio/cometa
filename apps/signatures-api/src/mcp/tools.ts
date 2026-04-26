@@ -2,61 +2,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { sendSigningInvite } from "../lib/email.js";
 import {
-  createSignatureRequest,
   getSignatureRequest,
   getSignatureRequestBySourceRef,
   listSignatureRequests,
 } from "../lib/signatures.js";
 
 export function registerSignatureTools(server: McpServer): void {
-  server.tool(
-    "request_signature",
-    "Create a signature request — accepts file reference + signer emails. Returns the request ID and signer details.",
-    {
-      signerEmails: z.array(z.string()).min(1).describe("Email addresses of signers"),
-      message: z.string().optional().describe("Optional message to signers"),
-      sourceRef: z.string().optional().describe("Source reference (e.g. document ID)"),
-      fileHash: z.string().describe("SHA-256 hash of the file to sign"),
-      fileName: z.string().optional().describe("Original file name"),
-      expiresInDays: z.number().optional().describe("Days until expiry (default 7)"),
-    },
-    async ({ signerEmails, message, sourceRef, fileHash, fileName, expiresInDays }) => {
-      const result = await createSignatureRequest({
-        sourceRef,
-        signerEmails,
-        message,
-        requestedBy: "mcp-user",
-        requestedByEmail: "mcp@cometa.co",
-        fileHash,
-        fileName,
-        expiresInDays,
-      });
-
-      for (const signer of result.signers) {
-        try {
-          await sendSigningInvite({
-            signerEmail: signer.email,
-            signerToken: signer.token,
-            senderEmail: "mcp@cometa.co",
-            fileName: fileName ?? "Document",
-            message,
-          });
-        } catch (err) {
-          console.error(`Failed to send signature email to ${signer.email}:`, err);
-        }
-      }
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Signature request created. ID: ${result.request.id}. Sent to: ${signerEmails.join(", ")}. ${result.signers.length} signer(s) will receive an email.`,
-          },
-        ],
-      };
-    },
-  );
-
   server.tool(
     "get_signature_status",
     "Check status of a signature request — who signed, who hasn't.",

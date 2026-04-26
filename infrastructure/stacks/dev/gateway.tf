@@ -28,15 +28,14 @@ module "gateway_lambda" {
     TASKS_API_URL      = module.tasks_api_lambda.function_url
     TASKS_MCP_URL      = "${module.tasks_api_lambda.function_url}mcp"
     AUTH_TABLE         = module.auth_table.name
-    NOTES_BUCKET       = module.private_bucket.bucket_id
     S3_PREFIX          = "intake/"
-    NOTES_PREFIX       = "notes/"
-    NOTES_DOMAIN       = var.notes_domain
     INTAKE_API_URL     = module.intake_api_lambda.function_url
     SIGNATURES_API_URL = module.signatures_lambda.function_url
     SIGNATURES_MCP_URL = "${module.signatures_lambda.function_url}mcp"
     UTILITIES_API_URL  = module.utilities_lambda.function_url
     UTILITIES_MCP_URL  = "${module.utilities_lambda.function_url}mcp"
+    NOTES_API_URL      = module.notes_api_lambda.function_url
+    NOTES_MCP_URL      = "${module.notes_api_lambda.function_url}mcp"
   })
 
   inline_policy_json = jsonencode({

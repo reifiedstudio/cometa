@@ -2,63 +2,38 @@
 
 import * as React from "react"
 import { AppSidebar, type AppSidebarProps } from "./app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "./ui/breadcrumb"
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar"
+import { SidebarInset, SidebarProvider } from "./ui/sidebar"
 
-interface BreadcrumbItem {
-  label: string
-  href?: string
-}
-
+/**
+ * Root layout wrapper — sidebar + content area.
+ * Use `AppPage` inside for the breadcrumbs, title bar, and scrollable content.
+ *
+ * ```tsx
+ * <AppLayout navItems={...} onSignOut={...}>
+ *   <AppPage
+ *     breadcrumbs={[{ label: "Notes" }, { label: "My Notes" }]}
+ *     title="My Notes"
+ *     actions={<ViewToggle />}
+ *   >
+ *     ...
+ *   </AppPage>
+ * </AppLayout>
+ * ```
+ */
 export function AppLayout({
-  breadcrumbs,
   children,
   services,
   navItems,
   user,
   onSignOut,
 }: {
-  breadcrumbs: BreadcrumbItem[]
   children: React.ReactNode
 } & Pick<AppSidebarProps, "services" | "navItems" | "user" | "onSignOut">) {
   return (
     <SidebarProvider>
       <AppSidebar services={services} navItems={navItems} user={user} onSignOut={onSignOut} />
       <SidebarInset className="flex flex-col h-svh overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              {breadcrumbs.map((item, i) => {
-                const isLast = i === breadcrumbs.length - 1
-                return (
-                  <React.Fragment key={item.label}>
-                    <BreadcrumbItem>
-                      {isLast ? (
-                        <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink href={item.href ?? "#"}>
-                          {item.label}
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                    {!isLast && <BreadcrumbSeparator />}
-                  </React.Fragment>
-                )
-              })}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex flex-1 flex-col min-h-0 overflow-y-auto">
-          {children}
-        </div>
+        {children}
       </SidebarInset>
     </SidebarProvider>
   )

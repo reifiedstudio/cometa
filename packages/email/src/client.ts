@@ -1,6 +1,7 @@
+import { render } from "@react-email/render";
 import { Resend } from "resend";
 
-const apiKey = process.env.RESEND_API_KEY;
+const apiKey = typeof process !== "undefined" ? process.env?.RESEND_API_KEY : undefined;
 
 export const resend = apiKey ? new Resend(apiKey) : null;
 
@@ -18,11 +19,16 @@ export async function sendEmail({
     return null;
   }
 
+  // Pre-render to HTML to avoid Resend's internal @react-email/render call
+  // which breaks in bun-bundled Lambda builds due to version mismatches.
+  const html = await render(react);
+  console.log(`[email] Rendered HTML length: ${html?.length ?? 0}, starts with: ${html?.substring(0, 50)}`);
+
   const { data, error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "Cometa <docs@daniellourie.me>",
+    from: (typeof process !== "undefined" ? process.env?.EMAIL_FROM : undefined) ?? "Cometa <docs@daniellourie.me>",
     to,
     subject,
-    react,
+    html,
   });
 
   if (error) {

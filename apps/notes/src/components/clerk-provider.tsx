@@ -1,8 +1,7 @@
 "use client";
 
 import { ClerkProvider, SignIn, useAuth, useOrganizationList, useUser } from "@clerk/clerk-react";
-import { PageLoader } from "@cometa/ui/page-loader";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
@@ -23,17 +22,9 @@ function OrgAutoSelector({ children }: { children: React.ReactNode }) {
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useUser();
-  const [minWait, setMinWait] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setMinWait(false), 1300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const loading = !isLoaded || minWait;
-
-  if (loading) {
-    return <PageLoader />;
+  if (!isLoaded) {
+    return null;
   }
 
   if (!isSignedIn) {

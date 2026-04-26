@@ -5,11 +5,13 @@ import DocumentList from "@/components/document-list";
 import SearchModal from "@/components/search-modal";
 import { Button } from "@/components/ui/button";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import UploadModal from "@/components/upload-modal";
+import { AppPage } from "@cometa/ui/app-page";
+import { CollectionProvider, CollectionView, CollectionItem, ViewToggle } from "@cometa/ui/collection-view";
+import { Badge } from "@cometa/ui/ui/badge";
 import { fetchDocuments } from "@/lib/api";
-import { typePluralLabels } from "@/lib/document-labels";
+import { typeLabels, typePluralLabels, typeBadgeColors, statusLabels, statusBadgeColors } from "@/lib/document-labels";
 import type { Document } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Upload } from "lucide-react";
@@ -109,18 +111,25 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Top bar */}
-      <PageHeader title="Documents">
-        <SearchInput onClick={() => setIsSearchOpen(true)} />
-        <Button onClick={() => setIsUploadOpen(true)}>
-          <Upload size={16} />
-          Upload
-        </Button>
-      </PageHeader>
-
+    <CollectionProvider>
+    <AppPage
+      breadcrumbs={[{ label: "Intake" }, { label: "Documents" }]}
+      title="Documents"
+      description={`${counts.all ?? 0} documents`}
+      actions={
+        <>
+          <ViewToggle />
+          <SearchInput onClick={() => setIsSearchOpen(true)} />
+          <Button onClick={() => setIsUploadOpen(true)}>
+            <Upload size={16} />
+            Upload
+          </Button>
+        </>
+      }
+      noPadding
+    >
       {/* Filters row */}
-      <div className="flex items-center justify-between px-8 py-3 border-b border-border">
+      <div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
         <FilterTabs
           activeKey={activeFilter}
           onChange={(key) => setActiveFilter(key)}
@@ -141,25 +150,35 @@ export default function DocumentsPage() {
       </div>
 
       {/* Document list */}
-      <div className="flex-1 overflow-y-auto px-8 py-2">
-        <DocumentList
-          documents={filteredDocuments.map((doc) => ({
-            id: doc.id,
-            description: doc.description,
-            type: doc.type,
-            status: doc.status,
-            date: doc.date,
-            thumbnailUrl: doc.thumbnailUrl,
-            previewUrl: doc.previewUrl,
-            signatureProgress: doc.signatureProgress,
-          }))}
-          loading={isLoading}
-          emptyMessage="No documents found. Upload one to get started."
-          onSelect={(item) => {
-            const doc = filteredDocuments.find((d) => d.id === item.id);
-            if (doc) handleSelectDocument(doc);
-          }}
-        />
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        {isLoading ? null : !filteredDocuments.length ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <FileText className="size-8 mb-3 opacity-40" />
+            <p className="text-sm">No documents found. Upload one to get started.</p>
+          </div>
+        ) : (
+          <CollectionView pageSize={12}>
+            {filteredDocuments.map((doc) => (
+              <CollectionItem
+                key={doc.id}
+                title={doc.description || doc.type}
+                timestamp={doc.date}
+                relativeTime={false}
+                href={`/documents/${doc.id}`}
+                badge={
+                  <Badge className={`border text-[11px] ${typeBadgeColors[doc.type] ?? "bg-muted text-muted-foreground"}`}>
+                    {typeLabels[doc.type] ?? doc.type}
+                  </Badge>
+                }
+                footer={
+                  <Badge variant="secondary" className={`text-xs ${statusBadgeColors[doc.status] ?? ""}`}>
+                    {statusLabels[doc.status] ?? doc.status}
+                  </Badge>
+                }
+              />
+            ))}
+          </CollectionView>
+        )}
       </div>
 
       {/* Modals */}
@@ -169,6 +188,7 @@ export default function DocumentsPage() {
         onUploadComplete={() => refetch()}
       />
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-    </div>
+    </AppPage>
+    </CollectionProvider>
   );
 }

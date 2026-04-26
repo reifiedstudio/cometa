@@ -5,10 +5,7 @@ import { IntakeLayout } from "@/components/intake-layout";
 
 export default function Documents() {
   return (
-    <IntakeLayout
-      breadcrumbs={[{ label: "Intake" }, { label: "Documents" }]}
-      active="documents"
-    >
+    <IntakeLayout active="documents">
       <DocumentsPage />
     </IntakeLayout>
   );

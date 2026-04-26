@@ -30,11 +30,18 @@ variable "cloudfront_function_code" {
     function handler(event) {
       var request = event.request;
       var uri = request.uri;
-      if (uri.endsWith('/')) {
-        request.uri = uri + 'index.html';
-      } else if (!uri.includes('.')) {
-        request.uri = uri + '/index.html';
+      // If it looks like a file (has extension), serve as-is
+      if (uri.includes('.')) return request;
+      // For any path, try to find the matching index.html
+      // Dynamic segments (UUIDs, slugs) get rewritten to the _ placeholder
+      var parts = uri.replace(/\/$/, '').split('/');
+      // Walk up the path, replacing UUID-like or non-static segments with _
+      for (var i = parts.length - 1; i >= 1; i--) {
+        if (parts[i].match(/^[0-9a-f-]{8,}$/) || parts[i].match(/^[^_].*[0-9]/)) {
+          parts[i] = '_';
+        }
       }
+      request.uri = parts.join('/') + '/index.html';
       return request;
     }
   EOF

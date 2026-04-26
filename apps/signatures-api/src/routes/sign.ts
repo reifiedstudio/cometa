@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { generateCertificate } from "../lib/certificate.js";
 import { sendAllSignedEmail, sendOtpEmail } from "../lib/email.js";
 import { getPresignedUrl } from "../lib/s3.js";
 import {
@@ -211,6 +212,9 @@ signRoutes.post(
           .from(schema.signatureFiles)
           .where(eq(schema.signatureFiles.requestId, result.request.id))
           .limit(1);
+
+        // Generate completion certificate PDF
+        await generateCertificate(result.request.id);
 
         await sendAllSignedEmail({
           to: result.request.requestedByEmail,

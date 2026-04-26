@@ -1,16 +1,11 @@
 import {
-  Body,
   Button,
-  Container,
-  Head,
   Heading,
   Hr,
-  Html,
-  Preview,
+  Section,
   Text,
 } from "@react-email/components";
-import { EmailHeader } from "./email-header";
-import { EmailFooter } from "./email-footer";
+import { EmailLayout } from "./email-layout";
 
 interface NoteCreatedProps {
   title: string;
@@ -24,70 +19,34 @@ export function NoteCreatedEmail({
   viewUrl = "#",
 }: NoteCreatedProps) {
   return (
-    <Html>
-      <Head />
-      <Preview>New note: {title}</Preview>
-      <Body style={body}>
-        <Container style={container}>
-          <EmailHeader />
-          <Heading style={heading}>Note Created</Heading>
-          <Text style={text}>
-            A new note has been created: <strong>{title}</strong>
-          </Text>
-          {snippet && (
-            <Text style={snippetStyle}>{snippet}</Text>
-          )}
-          <Button style={button} href={viewUrl}>
-            View Note
-          </Button>
-          <Hr style={hr} />
-          <Text style={footer}>
-            This note was created via the Cometa platform.
-          </Text>
-          <EmailFooter />
-        </Container>
-      </Body>
-    </Html>
+    <EmailLayout preview={`New note: ${title}`}>
+      <Heading style={heading}>Note Created</Heading>
+      <Text style={text}>A new note has been created:</Text>
+      <Text style={docName}>{title}</Text>
+      {snippet && (
+        <Section style={snippetBox}>
+          <Text style={snippetText}>{snippet}</Text>
+        </Section>
+      )}
+      <Section style={buttonSection}>
+        <Button style={button} href={viewUrl}>
+          View Note
+        </Button>
+      </Section>
+      <Hr style={hr} />
+      <Text style={footer}>
+        This note expires in 30 days. If you did not create this note, you can safely ignore this email.
+      </Text>
+    </EmailLayout>
   );
 }
 
-const body = {
-  backgroundColor: "#f6f6f6",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-const container = {
-  backgroundColor: "#ffffff",
-  margin: "40px auto",
-  padding: "32px",
-  borderRadius: "12px",
-  maxWidth: "480px",
-};
-const heading = {
-  fontSize: "20px",
-  fontWeight: "600" as const,
-  color: "#212327",
-  marginBottom: "16px",
-};
+const heading = { fontSize: "20px", fontWeight: "600" as const, color: "#212327", marginBottom: "16px" };
 const text = { fontSize: "14px", color: "#555A65", lineHeight: "1.6" };
-const snippetStyle = {
-  fontSize: "13px",
-  color: "#717983",
-  lineHeight: "1.5",
-  backgroundColor: "#f8f9fa",
-  padding: "12px 16px",
-  borderRadius: "8px",
-  borderLeft: "3px solid #e2e8f0",
-};
-const button = {
-  backgroundColor: "#212327",
-  color: "#ffffff",
-  fontSize: "14px",
-  fontWeight: "600" as const,
-  padding: "12px 24px",
-  borderRadius: "8px",
-  textDecoration: "none",
-  display: "inline-block" as const,
-  marginTop: "16px",
-};
+const docName = { fontSize: "16px", fontWeight: "600" as const, color: "#212327", padding: "12px 16px", backgroundColor: "#F8F8FA", borderRadius: "8px" };
+const snippetBox = { backgroundColor: "#F8F8FA", borderRadius: "8px", padding: "12px 16px", margin: "16px 0" };
+const snippetText = { fontSize: "14px", color: "#555A65", fontStyle: "italic" as const, margin: "0", lineHeight: "1.5" };
+const buttonSection = { textAlign: "center" as const, margin: "24px 0" };
+const button = { backgroundColor: "#212327", color: "#ffffff", padding: "12px 24px", borderRadius: "8px", fontSize: "14px", fontWeight: "600" as const, textDecoration: "none" };
 const hr = { borderColor: "#EBEEF1", margin: "24px 0" };
 const footer = { fontSize: "13px", color: "#717983", lineHeight: "1.5" };

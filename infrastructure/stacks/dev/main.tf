@@ -416,9 +416,11 @@ module "signatures_lambda" {
   timeout_seconds = 30
 
   environment = merge(local.signatures_secrets, {
-    S3_BUCKET  = module.private_bucket.bucket_id
-    S3_PREFIX = "signatures/"
-    CORS_ORIGIN          = "https://${var.intake_domain}"
+    S3_BUCKET         = module.private_bucket.bucket_id
+    S3_PREFIX         = "signatures/"
+    CORS_ORIGIN       = "https://${var.intake_domain}"
+    PDF_CONVERTER_URL = module.pdf_converter_lambda.function_url
+    UTILITIES_BUCKET  = module.notes_content_bucket.bucket_id
   })
 
   inline_policy_json = jsonencode({
@@ -436,6 +438,15 @@ module "signatures_lambda" {
         Resource = [
           module.private_bucket.bucket_arn,
           "${module.private_bucket.bucket_arn}/*"
+        ]
+      },
+      {
+        Sid    = "S3UtilitiesRead"
+        Effect = "Allow"
+        Action = ["s3:GetObject"]
+        Resource = [
+          module.notes_content_bucket.bucket_arn,
+          "${module.notes_content_bucket.bucket_arn}/*"
         ]
       }
     ]

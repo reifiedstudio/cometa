@@ -1,42 +1,33 @@
-import { createStorage } from "@cometa/storage";
-import { getNote, queryAllNotes, updateNote } from "@cometa/service-core";
 import { Hono } from "hono";
 import type { GatewayEnv } from "../lib/types.js";
 
-const notesStorage = createStorage({
-  bucket: process.env["NOTES_BUCKET"],
-  prefix: process.env["NOTES_PREFIX"] ?? "notes/",
-});
+const NOTES_API_URL = process.env["NOTES_API_URL"] ?? "http://localhost:3008";
 
+// Transparent proxy — forward all /api/notes/* to notes-api as /api/notes/*
 export const noteRoutes = new Hono<GatewayEnv>();
 
-// List all notes (any authenticated user)
-noteRoutes.get("/", async (c) => {
-  const result = await queryAllNotes();
-  return c.json({ notes: result.items });
-});
+noteRoutes.all("/*", async (c) => {
+  const path = c.req.path.replace("/api/notes", "/api/notes");
+  const url = `${NOTES_API_URL}${path}${c.req.url.includes("?") ? "?" + c.req.url.split("?")[1] : ""}`;
 
-// Get single note + presigned URL for content
-noteRoutes.get("/:id", async (c) => {
-  const id = c.req.param("id");
-  const note = await getNote(id);
-  if (!note) return c.json({ error: "Note not found" }, 404);
+  const headers = new Headers(c.req.raw.headers);
+  const user = c.get("user");
+  if (user) {
+    headers.set("x-user-id", user.id);
+    headers.set("x-user-email", user.email ?? "");
+    headers.set("x-user-role", user.role ?? "");
+  }
 
-  const contentUrl = await notesStorage.getSignedUrl(note.s3Key, 900);
-  return c.json({ ...note, contentUrl });
-});
+  const res = await fetch(url, {
+    method: c.req.method,
+    headers,
+    body: c.req.method !== "GET" && c.req.method !== "HEAD" ? c.req.raw.body : undefined,
+    // @ts-ignore
+    duplex: "half",
+  });
 
-// Star/unstar a note
-noteRoutes.patch("/:id/star", async (c) => {
-  const id = c.req.param("id");
-  const body = await c.req.json<{ starred: boolean }>();
-  await updateNote(id, { starred: body.starred });
-  return c.json({ id, starred: body.starred });
-});
-
-// Soft-delete a note
-noteRoutes.delete("/:id", async (c) => {
-  const id = c.req.param("id");
-  await updateNote(id, { deleted: true });
-  return c.json({ id, deleted: true });
+  return new Response(res.body, {
+    status: res.status,
+    headers: res.headers,
+  });
 });

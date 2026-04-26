@@ -1,11 +1,13 @@
 "use client";
 
 import { listSignatureRequests } from "@/lib/api";
-import { useClerk } from "@clerk/clerk-react";
+import { useClerk, useUser } from "@clerk/clerk-react";
 import { AppLayout } from "@cometa/ui/app-layout";
+import { AppPage } from "@cometa/ui/app-page";
+import { CollectionProvider, ViewToggle } from "@cometa/ui/collection-view";
 import { useQuery } from "@tanstack/react-query";
-import { PenLine, CheckCircle2, Loader2 } from "lucide-react";
-import { RequestsTable } from "../page";
+import { PenLine, CheckCircle2 } from "lucide-react";
+import { RequestsCollection } from "../page";
 
 const navItems = [
   { title: "Requests", url: "/", icon: PenLine },
@@ -14,6 +16,7 @@ const navItems = [
 
 export default function CompletedPage() {
   const { signOut } = useClerk();
+  const { user } = useUser();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["signature-requests"],
@@ -27,35 +30,30 @@ export default function CompletedPage() {
 
   return (
     <AppLayout
-      breadcrumbs={[{ label: "Signatures" }, { label: "Completed" }]}
       navItems={navItems}
+      user={{
+        name: user?.fullName || "User",
+        email: user?.primaryEmailAddress?.emailAddress || "",
+        avatar: user?.imageUrl || "",
+      }}
       onSignOut={() => signOut()}
     >
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <div>
-            <h1 className="text-lg font-semibold">Completed</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {completed.length} signed and archived
-            </p>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin mr-2" />
-              Loading...
-            </div>
-          ) : error ? (
+      <CollectionProvider>
+        <AppPage
+          breadcrumbs={[{ label: "Signatures" }, { label: "Completed" }]}
+          title="Completed"
+          description={`${completed.length} signed and archived`}
+          actions={<ViewToggle />}
+        >
+          {isLoading ? null : error ? (
             <div className="flex items-center justify-center py-20 text-muted-foreground">
               Failed to load completed requests.
             </div>
           ) : (
-            <RequestsTable requests={completed} onSelect={() => {}} />
+            <RequestsCollection requests={completed} />
           )}
-        </div>
-      </div>
+        </AppPage>
+      </CollectionProvider>
     </AppLayout>
   );
 }

@@ -23,26 +23,34 @@ export async function listSignatureRequests(params?: { status?: string; limit?: 
   const sp = new URLSearchParams();
   if (params?.status) sp.set("status", params.status);
   if (params?.limit) sp.set("limit", String(params.limit));
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests?${sp}`);
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests?${sp}`);
   if (!res.ok) throw new Error("Failed to fetch signature requests");
   return res.json();
 }
 
 export async function getSignatureRequest(id: string) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/${id}`);
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/${id}`);
   if (!res.ok) throw new Error("Failed to fetch signature request");
   return res.json();
 }
 
-export async function getSignatureStatus(sourceRef: string) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/source/${sourceRef}`);
-  if (!res.ok && res.status !== 404) throw new Error("Failed to get signature status");
-  if (res.status === 404) return null;
-  return res.json();
+export async function getSignatureStatus(idOrSourceRef: string) {
+  // Try source ref first, then request ID
+  const sourceRes = await authFetch(`${SIGNATURES_API_URL}/requests/source/${idOrSourceRef}`);
+  if (sourceRes.ok) return sourceRes.json();
+
+  const idRes = await authFetch(`${SIGNATURES_API_URL}/requests/${idOrSourceRef}`);
+  if (idRes.ok) {
+    const data = await idRes.json();
+    // Normalize shape to match source ref response
+    return { id: data.request.id, status: data.request.status, message: data.request.message, signers: data.signers, createdAt: data.request.createdAt, expiresAt: data.request.expiresAt };
+  }
+
+  return null;
 }
 
 export async function createSignatureRequest(data: FormData) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests`, {
     method: "POST",
     body: data,
   });
@@ -51,7 +59,7 @@ export async function createSignatureRequest(data: FormData) {
 }
 
 export async function addSignerToRequest(requestId: string, email: string) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers`, {
     method: "POST",
     body: JSON.stringify({ requestId, email }),
   });
@@ -63,7 +71,7 @@ export async function addSignerToRequest(requestId: string, email: string) {
 }
 
 export async function removeSignerFromRequest(signerId: string) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers/${signerId}`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers/${signerId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to remove signer");
@@ -71,7 +79,7 @@ export async function removeSignerFromRequest(signerId: string) {
 }
 
 export async function resendSignerEmail(signerId: string) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers/${signerId}/resend`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers/${signerId}/resend`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to resend email");
@@ -82,7 +90,7 @@ export async function updateSignatureRequest(
   requestId: string,
   data: { expiresAt?: string | null },
 ) {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/${requestId}`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/${requestId}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -90,8 +98,14 @@ export async function updateSignatureRequest(
   return res.json();
 }
 
+export async function getRequestDocument(requestId: string) {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/${requestId}/document`);
+  if (!res.ok) throw new Error("Failed to get document");
+  return res.json() as Promise<{ url: string; mimeType: string; fileName: string }>;
+}
+
 export async function fetchOverdueSignatures() {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/overdue`);
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/overdue`);
   if (!res.ok) throw new Error("Failed to fetch overdue");
   return res.json();
 }

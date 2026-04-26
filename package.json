@@ -8,7 +8,7 @@
     "dev:intake": "turbo dev --filter=@cometa/intake --filter=@cometa/intake-api",
     "dev:tasks": "turbo dev --filter=@cometa/tasks --filter=@cometa/tasks-api",
     "dev:signatures": "turbo dev --filter=@cometa/signatures --filter=@cometa/signatures-api",
-    "dev:notes": "turbo dev --filter=@cometa/notes --filter=@cometa/gateway",
+    "dev:notes": "turbo dev --filter=@cometa/notes --filter=@cometa/notes-api",
     "dev:admin": "turbo dev --filter=@cometa/admin",
     "dev:gateway": "turbo dev --filter=@cometa/gateway-ui --filter=@cometa/gateway",
     "build": "turbo build",

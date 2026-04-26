@@ -143,6 +143,7 @@ export const signatureRequests = signaturesSchema.table("signature_requests", {
   requestedBy: text("requested_by").notNull(),
   requestedByEmail: text("requested_by_email").notNull(),
   documentHash: text("document_hash").notNull(),
+  certificateKey: text("certificate_key"), // S3 key for completion certificate PDF
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -165,6 +166,7 @@ export const signers = signaturesSchema.table("signers", {
   signedAt: timestamp("signed_at"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  signatureHash: text("signature_hash"), // SHA-256(documentHash + name + timestamp + IP)
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
