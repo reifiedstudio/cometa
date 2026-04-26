@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const SIGN_API_URL = process.env.NEXT_PUBLIC_SIGN_API_URL ?? "https://mcp.daniellourie.me";
 
@@ -43,12 +44,9 @@ interface SignPageData {
 
 type Step = "loading" | "error" | "verify" | "otp" | "sign" | "done" | "already-signed";
 
-export default function SignPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const { token } = use(params);
+export default function SignPage() {
+  const pathname = usePathname();
+  const token = pathname?.replace(/^\//, "").replace(/\/$/, "") ?? "";
   const [step, setStep] = useState<Step>("loading");
   const [data, setData] = useState<SignPageData | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -102,7 +100,7 @@ export default function SignPage({
         setStep("error");
       }
     }
-    load();
+    if (token && token !== "_") load();
   }, [token]);
 
   const handleSendOtp = async () => {
