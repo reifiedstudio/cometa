@@ -37,11 +37,7 @@ const defaultNavItems = [
   { title: "Saved", url: "/?path=/story/pages-notes--saved", icon: Star },
 ]
 
-const defaultUser = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
-}
+// No default user — sidebar hides user section when not provided
 
 export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   services?: { name: string; logo: React.ElementType; description: string; url?: string }[]
@@ -53,7 +49,7 @@ export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({
   services = defaultServices,
   navItems = defaultNavItems,
-  user = defaultUser,
+  user,
   onSignOut,
   ...props
 }: AppSidebarProps) {
@@ -65,9 +61,11 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} onSignOut={onSignOut} />
-      </SidebarFooter>
+      {user && (
+        <SidebarFooter>
+          <NavUser user={user} onSignOut={onSignOut} />
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   )
