@@ -40,19 +40,19 @@ export async function fetchDocuments(params?: {
   if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom);
   if (params?.dateTo) searchParams.set("dateTo", params.dateTo);
 
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents?${searchParams}`);
+  const res = await authFetch(`${INTAKE_API_URL}/documents?${searchParams}`);
   if (!res.ok) throw new Error("Failed to fetch documents");
   return res.json();
 }
 
 export async function fetchDocument(id: string): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}`);
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}`);
   if (!res.ok) throw new Error("Failed to fetch document");
   return res.json();
 }
 
 export async function updateDocument(id: string, data: Record<string, unknown>): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}`, {
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -64,7 +64,7 @@ export async function uploadDocument(file: File): Promise<any> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await authFetch(`${INTAKE_API_URL}/api/upload`, {
+  const res = await authFetch(`${INTAKE_API_URL}/upload`, {
     method: "POST",
     body: formData,
   });
@@ -76,18 +76,18 @@ export async function searchDocuments(query: string, type?: string): Promise<any
   const searchParams = new URLSearchParams({ q: query });
   if (type && type !== "all") searchParams.set("type", type);
 
-  const res = await authFetch(`${INTAKE_API_URL}/api/search?${searchParams}`);
+  const res = await authFetch(`${INTAKE_API_URL}/search?${searchParams}`);
   if (!res.ok) throw new Error("Failed to search documents");
   return res.json();
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}`, { method: "DELETE" });
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete document");
 }
 
 export async function restoreDocument(id: string): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}/restore`, {
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}/restore`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to restore document");
@@ -95,18 +95,18 @@ export async function restoreDocument(id: string): Promise<any> {
 }
 
 export async function fetchTrashedDocuments(): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents?status=rejected`);
+  const res = await authFetch(`${INTAKE_API_URL}/documents?status=rejected`);
   if (!res.ok) throw new Error("Failed to fetch trashed documents");
   return res.json();
 }
 
 export async function permanentlyDeleteDocument(id: string): Promise<void> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}`, { method: "DELETE" });
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete document");
 }
 
 export async function reprocessDocument(id: string): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${id}/reprocess`, {
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${id}/reprocess`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to reprocess document");
@@ -133,7 +133,7 @@ export async function requestSignatures(data: {
   formData.append("fileHash", doc.fileHash);
   formData.append("fileName", doc.originalName);
 
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests`, {
     method: "POST",
     body: formData,
   });
@@ -142,7 +142,7 @@ export async function requestSignatures(data: {
 }
 
 export async function addSignerToRequest(requestId: string, email: string): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers`, {
     method: "POST",
     body: JSON.stringify({ requestId, email }),
   });
@@ -154,7 +154,7 @@ export async function addSignerToRequest(requestId: string, email: string): Prom
 }
 
 export async function removeSignerFromRequest(signerId: string): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers/${signerId}`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers/${signerId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to remove signer");
@@ -162,7 +162,7 @@ export async function removeSignerFromRequest(signerId: string): Promise<any> {
 }
 
 export async function resendSignerEmail(signerId: string): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/signers/${signerId}/resend`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/signers/${signerId}/resend`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to resend email");
@@ -173,7 +173,7 @@ export async function updateSignatureRequest(
   requestId: string,
   data: { expiresAt?: string | null },
 ): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/${requestId}`, {
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/${requestId}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -182,13 +182,13 @@ export async function updateSignatureRequest(
 }
 
 export async function fetchOverdueSignatures(): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/overdue`);
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/overdue`);
   if (!res.ok) throw new Error("Failed to fetch overdue signatures");
   return res.json();
 }
 
 export async function getSignatureStatus(documentId: string): Promise<any> {
-  const res = await authFetch(`${SIGNATURES_API_URL}/api/requests/source/${documentId}`);
+  const res = await authFetch(`${SIGNATURES_API_URL}/requests/source/${documentId}`);
   if (!res.ok && res.status !== 404) throw new Error("Failed to get signature status");
   if (res.status === 404) return null;
   return res.json();
@@ -197,7 +197,7 @@ export async function getSignatureStatus(documentId: string): Promise<any> {
 // ── Audit Logs (via intake-api) ──
 
 export async function fetchAuditLogs(documentId: string): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/documents/${documentId}/audit`);
+  const res = await authFetch(`${INTAKE_API_URL}/documents/${documentId}/audit`);
   if (!res.ok) throw new Error("Failed to fetch audit logs");
   return res.json();
 }
@@ -205,13 +205,13 @@ export async function fetchAuditLogs(documentId: string): Promise<any> {
 // ── Document Types (via intake-api) ──
 
 export async function fetchDocumentTypes(): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/document-types`);
+  const res = await authFetch(`${INTAKE_API_URL}/document-types`);
   if (!res.ok) throw new Error("Failed to fetch document types");
   return res.json();
 }
 
 export async function fetchDocumentType(id: string): Promise<any> {
-  const res = await authFetch(`${INTAKE_API_URL}/api/document-types/${id}`);
+  const res = await authFetch(`${INTAKE_API_URL}/document-types/${id}`);
   if (!res.ok) throw new Error("Failed to fetch document type");
   return res.json();
 }
