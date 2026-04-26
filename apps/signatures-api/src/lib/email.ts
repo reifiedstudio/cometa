@@ -11,7 +11,7 @@ export async function sendSigningInvite(params: {
   fileType?: string;
   message?: string;
 }) {
-  const signUrl = `${APP_URL}/sign/${params.signerToken}`;
+  const signUrl = `${APP_URL}/${params.signerToken}`;
   await sendEmail({
     to: params.signerEmail,
     subject: `${params.senderEmail} sent you a document to sign`,
