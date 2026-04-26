@@ -2,13 +2,17 @@
 
 import DocumentDetail from "@/components/document-detail";
 import { IntakeLayout } from "@/components/intake-layout";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function DocumentPage() {
-  const params = useParams();
+  const pathname = usePathname();
+  const documentId = pathname?.split("/documents/")[1]?.replace(/\/$/, "") ?? "";
+
   return (
     <IntakeLayout active="documents">
-      <DocumentDetail documentId={params.id as string} />
+      {documentId && documentId !== "_" ? (
+        <DocumentDetail documentId={documentId} />
+      ) : null}
     </IntakeLayout>
   );
 }
