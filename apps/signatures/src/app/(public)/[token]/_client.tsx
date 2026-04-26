@@ -426,12 +426,10 @@ export default function SignPage() {
       {/* Document viewer modal */}
       {showDocViewer && docUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setShowDocViewer(false)}
+          className="fixed inset-0 z-50 bg-white"
         >
           <div
-            className="relative w-full max-w-4xl h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="relative w-full h-full bg-white overflow-hidden flex flex-col"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
               <p className="text-sm font-medium truncate">{data?.document.name}</p>
