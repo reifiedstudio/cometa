@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { use, useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_SIGNATURES_API_URL ?? "http://localhost:3007";
+const SIGN_API_URL = process.env.NEXT_PUBLIC_SIGN_API_URL ?? "https://mcp.daniellourie.me";
 
 const signerStatusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: "Pending", color: "bg-orange-100 text-orange-700", icon: Clock },
@@ -68,7 +68,7 @@ export default function SignPage({
   const handleViewDocument = async () => {
     setViewingDoc(true);
     try {
-      const res = await fetch(`${API_URL}/api/sign/${token}/document`);
+      const res = await fetch(`${SIGN_API_URL}/sign/${token}/document`);
       if (!res.ok) throw new Error("Failed to load document");
       const result = await res.json();
       window.open(result.url, "_blank");
@@ -83,7 +83,7 @@ export default function SignPage({
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/api/sign/${token}`);
+        const res = await fetch(`${SIGN_API_URL}/sign/${token}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           setErrorMessage(body.error || "This signing link is invalid or has expired.");
@@ -108,7 +108,7 @@ export default function SignPage({
   const handleSendOtp = async () => {
     setOtpSending(true);
     try {
-      const res = await fetch(`${API_URL}/api/sign/${token}/otp`, {
+      const res = await fetch(`${SIGN_API_URL}/sign/${token}/otp`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to send OTP");
@@ -123,7 +123,7 @@ export default function SignPage({
   const handleVerifyOtp = async () => {
     setOtpVerifying(true);
     try {
-      const res = await fetch(`${API_URL}/api/sign/${token}/verify`, {
+      const res = await fetch(`${SIGN_API_URL}/sign/${token}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ otp: otpCode }),
@@ -147,7 +147,7 @@ export default function SignPage({
     if (!signerName.trim()) return;
     setSigning(true);
     try {
-      const res = await fetch(`${API_URL}/api/sign/${token}/sign`, {
+      const res = await fetch(`${SIGN_API_URL}/sign/${token}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: signerName.trim() }),
