@@ -182,7 +182,6 @@ export default function GatewayPage() {
     // biome-ignore lint: click handler for sidebar nav interception
     <div onClick={handleClick} className="w-full">
       <AppLayout
-        breadcrumbs={breadcrumbs}
         navItems={navItems}
       >
         {view.type === "overview" && <OverviewPanel onNavigate={(type, slug) => setView({ type, slug })} />}
