@@ -493,90 +493,62 @@ export default function TaskDetailPage() {
 
               {/* Details tab */}
               {panelTab === "details" && (
-                <div className="p-4 space-y-4">
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Status</span>
-                      <Badge className={cn("border text-[11px]", config.className)}>
-                        <StatusIcon size={10} />
-                        {config.label}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Department</span>
-                      <span className="font-medium">{meta.label}</span>
-                    </div>
-                    {task.type && task.type !== "request" && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Type</span>
-                        <span className="font-medium capitalize">{task.type.replace(/[_-]/g, " ")}</span>
-                      </div>
-                    )}
-                    {/* Assignee card */}
+                <div className="p-4 space-y-5">
+                  {/* People */}
+                  <div className="space-y-2">
+                    {/* Assignee */}
                     <div className="relative">
-                      <p className="text-xs text-muted-foreground mb-1.5">Assigned to</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Assignee</p>
                       <button
                         type="button"
                         onClick={() => setShowAssign(!showAssign)}
-                        className="w-full flex items-center gap-2.5 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center gap-2 rounded-lg border p-2 hover:bg-muted/50 transition-colors text-left"
                       >
-                        <div className="size-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                          {task.assignedTo ? (
-                            <User size={13} className="text-violet-600" />
-                          ) : (
-                            <UserPlus size={13} className="text-muted-foreground" />
-                          )}
+                        <div className={cn("size-6 rounded-full flex items-center justify-center shrink-0", task.assignedTo ? "bg-violet-100" : "bg-muted")}>
+                          {task.assignedTo ? <User size={11} className="text-violet-600" /> : <UserPlus size={11} className="text-muted-foreground" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {task.assignedTo === "agent" ? "AI Agent" : task.assignedTo ?? "Unassigned"}
-                          </p>
-                        </div>
-                        <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                        <span className="text-xs font-medium truncate">{task.assignedTo === "agent" ? "AI Agent" : task.assignedTo?.split("@")[0] ?? "Unassigned"}</span>
                       </button>
-                      <AssignPicker
-                        open={showAssign}
-                        onOpenChange={setShowAssign}
-                        currentAssignee={task.assignedTo}
-                        onAssign={(userId, email) => {
-                          assignMutation.mutate({ email });
-                        }}
-                      />
+                      <AssignPicker open={showAssign} onOpenChange={setShowAssign} currentAssignee={task.assignedTo} onAssign={(userId, email) => assignMutation.mutate({ email })} />
                     </div>
-
-                    {/* Reviewer card */}
+                    {/* Reviewer */}
                     <div className="relative">
-                      <p className="text-xs text-muted-foreground mb-1.5">Review by</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Reviewer</p>
                       <button
                         type="button"
                         onClick={() => setShowReviewer(!showReviewer)}
-                        className="w-full flex items-center gap-2.5 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center gap-2 rounded-lg border p-2 hover:bg-muted/50 transition-colors text-left"
                       >
-                        <div className="size-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                          {task.metadata?.reviewBy ? (
-                            <User size={13} className="text-amber-600" />
-                          ) : (
-                            <UserPlus size={13} className="text-muted-foreground" />
-                          )}
+                        <div className={cn("size-6 rounded-full flex items-center justify-center shrink-0", task.metadata?.reviewBy ? "bg-amber-100" : "bg-muted")}>
+                          {task.metadata?.reviewBy ? <User size={11} className="text-amber-600" /> : <UserPlus size={11} className="text-muted-foreground" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {(task.metadata?.reviewBy as string) ?? "Not set"}
-                          </p>
-                        </div>
-                        <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                        <span className="text-xs font-medium truncate">{(task.metadata?.reviewBy as string)?.split("@")[0] ?? "Not set"}</span>
                       </button>
-                      <AssignPicker
-                        open={showReviewer}
-                        onOpenChange={setShowReviewer}
-                        currentAssignee={task.metadata?.reviewBy as string}
-                        onAssign={(userId, email) => {
-                          assignMutation.mutate({ email });
-                        }}
-                      />
+                      <AssignPicker open={showReviewer} onOpenChange={setShowReviewer} currentAssignee={task.metadata?.reviewBy as string} onAssign={(userId, email) => assignMutation.mutate({ email })} />
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Created</span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="rounded-lg border divide-y">
+                    <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                      <span className="text-muted-foreground text-xs">Status</span>
+                      <Badge className={cn("border text-[10px]", config.className)}>
+                        <StatusIcon size={9} />
+                        {config.label}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                      <span className="text-muted-foreground text-xs">Department</span>
+                      <span className="text-xs font-medium">{meta.label}</span>
+                    </div>
+                    {task.type && task.type !== "request" && (
+                      <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                        <span className="text-muted-foreground text-xs">Type</span>
+                        <span className="text-xs font-medium capitalize">{task.type.replace(/[_-]/g, " ")}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                      <span className="text-muted-foreground text-xs">Created</span>
                       <span className="text-xs tabular-nums">{formatDateTime(task.createdAt)}</span>
                     </div>
                   </div>
