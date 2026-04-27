@@ -4,16 +4,20 @@ import { fetchServices, fetchTasks } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { AssignPicker } from "@/components/assign-picker";
+import { KanbanBoard } from "@/components/kanban-board";
 import { updateTask as updateTaskApi } from "@/lib/api";
 import { AppLayout } from "@cometa/ui/app-layout";
 import { AppPage } from "@cometa/ui/app-page";
 import { FilterTabs } from "@cometa/ui/filter-tabs";
+import { Button } from "@cometa/ui/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@cometa/ui/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ListTodo,
   Building2,
   Clock,
+  Columns3,
+  LayoutList,
   Loader2,
   AlertTriangle,
   CheckCircle2,
@@ -57,6 +61,7 @@ export default function DepartmentPage() {
   const { user } = useUser();
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"created" | "updated">("created");
+  const [view, setView] = useState<"list" | "board">("list");
   const [assignPickerFor, setAssignPickerFor] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -111,7 +116,27 @@ export default function DepartmentPage() {
         breadcrumbs={[{ label: "Tasks" }, { label: meta.label }]}
         title={meta.label}
         description={meta.description}
-        toolbar={
+        actions={
+          <div className="inline-flex items-center rounded-md border">
+            <Button
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="size-8 rounded-r-none"
+              onClick={() => setView("list")}
+            >
+              <LayoutList className="size-4" />
+            </Button>
+            <Button
+              variant={view === "board" ? "secondary" : "ghost"}
+              size="icon"
+              className="size-8 rounded-l-none border-l"
+              onClick={() => setView("board")}
+            >
+              <Columns3 className="size-4" />
+            </Button>
+          </div>
+        }
+        toolbar={view === "list" ? (
           <FilterTabs
             tabs={filters.map((f) => ({
               key: f,
@@ -121,8 +146,8 @@ export default function DepartmentPage() {
             activeKey={statusFilter}
             onChange={setStatusFilter}
           />
-        }
-        toolbarRight={
+        ) : undefined}
+        toolbarRight={view === "list" ? (
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as "created" | "updated")}>
             <SelectTrigger className="h-8 text-xs w-[140px]">
               <SelectValue />
@@ -132,15 +157,16 @@ export default function DepartmentPage() {
               <SelectItem value="updated">Last updated</SelectItem>
             </SelectContent>
           </Select>
-        }
+        ) : undefined}
       >
-        <div className="space-y-4">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 size={20} className="animate-spin text-muted-foreground" />
           </div>
         ) : tasks.length === 0 ? (
           <div className="text-center py-16 text-sm text-muted-foreground">No tasks found</div>
+        ) : view === "board" ? (
+          <KanbanBoard tasks={allTasks} slug={slug} />
         ) : (
           <div className="space-y-2">
             {tasks.map((task: any) => {
@@ -214,7 +240,6 @@ export default function DepartmentPage() {
             })}
           </div>
         )}
-        </div>
       </AppPage>
     </AppLayout>
   );

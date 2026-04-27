@@ -3,24 +3,25 @@
 import { fetchServices, fetchTasks } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/clerk-react";
+import { KanbanBoard } from "@/components/kanban-board";
 import { AppLayout } from "@cometa/ui/app-layout";
 import { AppPage } from "@cometa/ui/app-page";
+import { Button } from "@cometa/ui/ui/button";
+import { FilterTabs } from "@cometa/ui/filter-tabs";
 import { useQuery } from "@tanstack/react-query";
 import {
   ListTodo,
   Building2,
   Clock,
+  Columns3,
+  LayoutList,
   Loader2,
   AlertTriangle,
   CheckCircle2,
-  MessageSquare,
   ChevronRight,
   User,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-// ── Status config ──
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock }> = {
   open: { label: "Open", className: "bg-amber-50 text-amber-700 border-amber-200/60", icon: Clock },
@@ -35,6 +36,7 @@ const serviceMeta: Record<string, { label: string; description: string }> = {
   hr: { label: "Human Resources", description: "Hiring, onboarding, leave" },
   engineering: { label: "Engineering", description: "Bugs, deployments, infra" },
   marketing: { label: "Marketing", description: "Campaigns, content, analytics" },
+  operations: { label: "Operations", description: "Delivery, vendors, facilities" },
 };
 
 function formatDateTime(date: string) {
@@ -46,64 +48,16 @@ function formatDateTime(date: string) {
   });
 }
 
-// ── Task card ──
+const filters = ["all", "review", "in_progress", "open", "done"] as const;
 
-function TaskCard({ task, slug, showDepartment }: { task: any; slug: string; showDepartment?: boolean }) {
-  const config = statusConfig[task.status] ?? statusConfig.open;
-  const StatusIcon = config.icon;
-  const meta = serviceMeta[slug];
+// ── My Tasks content ──
 
-  return (
-    <a
-      href={`/${slug}/tasks/${task.id}`}
-      className="border rounded-lg hover:border-foreground/20 transition-colors overflow-hidden block"
-    >
-      <div className="px-4 pt-4 pb-3">
-        <p className="text-sm text-foreground line-clamp-2 leading-relaxed mb-2">{task.body}</p>
-        {task.type && task.type !== "request" && (
-          <span className="text-[11px] text-muted-foreground capitalize">{task.type.replace(/-/g, " ")}</span>
-        )}
-      </div>
-      <div className="px-4 py-2.5 bg-muted/30 border-t flex items-center justify-between">
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          {showDepartment && meta && (
-            <span className="inline-flex items-center gap-1.5 font-medium">
-              <Building2 size={11} />
-              {meta.label}
-            </span>
-          )}
-          <span className="flex items-center gap-1.5">
-            <Clock size={11} />
-            {formatDateTime(task.createdAt)}
-          </span>
-          {task.assignedTo && (
-            <span className="flex items-center gap-1.5">
-              <User size={11} />
-              {task.assignedTo}
-            </span>
-          )}
-        </div>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border",
-            config.className,
-          )}
-        >
-          <StatusIcon size={10} />
-          {config.label}
-          <ChevronRight size={11} />
-        </span>
-      </div>
-    </a>
-  );
-}
-
-// ── My Tasks page ──
-
-function MyTasksInner({ slugs }: { slugs: string[] }) {
+function MyTasksContent({ slugs }: { slugs: string[] }) {
+  const { user } = useUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
   const [statusFilter, setStatusFilter] = useState("all");
+  const [view, setView] = useState<"list" | "board">("list");
 
-  // Fetch tasks from all services
   const queries = slugs.map((slug) => ({
     slug,
     // biome-ignore lint: hooks in map is fine since slugs are stable
@@ -114,74 +68,120 @@ function MyTasksInner({ slugs }: { slugs: string[] }) {
     }),
   }));
 
-  const allTasks = queries.flatMap((q) =>
-    (q.data?.items ?? []).map((t: any) => ({ ...t, _slug: q.slug })),
-  );
-
-  const myTasks = allTasks
-    .filter((t: any) => t.status !== "done")
-    .filter((t: any) => statusFilter === "all" || t.status === statusFilter)
+  const allTasks = queries
+    .flatMap((q) => (q.data?.items ?? []).map((t: any) => ({ ...t, _slug: q.slug })))
+    .filter((t: any) => t.assignedTo === userEmail || t.assignedTo === user?.id)
     .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const reviewCount = allTasks.filter((t: any) => t.status === "review").length;
-  const inProgressCount = allTasks.filter((t: any) => t.status === "in_progress").length;
-  const doneCount = allTasks.filter((t: any) => t.status === "done").length;
+  const filteredTasks = statusFilter === "all"
+    ? allTasks.filter((t: any) => t.status !== "done")
+    : allTasks.filter((t: any) => t.status === statusFilter);
+
   const isLoading = queries.some((q) => q.isLoading);
 
-  const filters = ["all", "review", "in_progress", "open"] as const;
-
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Needs Review</p>
-          <p className="text-2xl font-semibold mt-1 text-violet-600">{reviewCount}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">In Progress</p>
-          <p className="text-2xl font-semibold mt-1 text-blue-600">{inProgressCount}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Done</p>
-          <p className="text-2xl font-semibold mt-1 text-emerald-600">{doneCount}</p>
-        </div>
-      </div>
-
-      <div className="flex gap-1">
-        {filters.map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setStatusFilter(f)}
-            className={cn(
-              "text-xs px-2.5 py-1 rounded-md transition-colors capitalize",
-              statusFilter === f
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
+    <AppPage
+      breadcrumbs={[{ label: "Tasks" }, { label: "My Tasks" }]}
+      title="My Tasks"
+      description="Tasks across all departments"
+      actions={
+        <div className="inline-flex items-center rounded-md border">
+          <Button
+            variant={view === "list" ? "secondary" : "ghost"}
+            size="icon"
+            className="size-8 rounded-r-none"
+            onClick={() => setView("list")}
           >
-            {f === "all" ? "All" : f === "in_progress" ? "In Progress" : f === "review" ? "Review" : f === "open" ? "Open" : f}
-          </button>
-        ))}
-      </div>
-
+            <LayoutList className="size-4" />
+          </Button>
+          <Button
+            variant={view === "board" ? "secondary" : "ghost"}
+            size="icon"
+            className="size-8 rounded-l-none border-l"
+            onClick={() => setView("board")}
+          >
+            <Columns3 className="size-4" />
+          </Button>
+        </div>
+      }
+      toolbar={view === "list" ? (
+        <FilterTabs
+          tabs={filters.map((f) => ({
+            key: f,
+            label: f === "all" ? "All" : f === "in_progress" ? "In Progress" : f === "review" ? "Review" : f === "open" ? "Open" : f === "done" ? "Done" : f,
+            count: f === "all" ? allTasks.filter((t: any) => t.status !== "done").length : allTasks.filter((t: any) => t.status === f).length,
+          }))}
+          activeKey={statusFilter}
+          onChange={setStatusFilter}
+        />
+      ) : undefined}
+    >
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={20} className="animate-spin text-muted-foreground" />
         </div>
-      ) : myTasks.length === 0 ? (
+      ) : view === "board" ? (
+        <KanbanBoard tasks={allTasks} slug="all" />
+      ) : filteredTasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <CheckCircle2 className="size-8 mb-3 opacity-40" />
           <p className="text-sm">You're all caught up</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {myTasks.map((task: any) => (
-            <TaskCard key={task.id} task={task} slug={task._slug} showDepartment />
-          ))}
+          {filteredTasks.map((task: any) => {
+            const config = statusConfig[task.status] ?? statusConfig.open;
+            const StatusIcon = config.icon;
+            const meta = serviceMeta[task._slug];
+            return (
+              <a
+                key={task.id}
+                href={`/${task._slug}/tasks/${task.id}`}
+                className="border rounded-lg hover:border-foreground/20 transition-colors block"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium capitalize">
+                      {task.type?.replace(/[_-]/g, " ") ?? "Task"}
+                    </span>
+                    {meta && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
+                        <Building2 size={9} />
+                        {meta.label}
+                      </span>
+                    )}
+                    <span className={cn(
+                      "inline-flex items-center gap-1 text-[10px] rounded-full px-1.5 py-0.5",
+                      task.assignedTo ? "text-muted-foreground bg-muted" : "text-muted-foreground/60 border border-dashed",
+                    )}>
+                      <User size={9} className="shrink-0" />
+                      <span className="truncate max-w-[150px]">{task.assignedTo === "agent" ? "AI Agent" : task.assignedTo ?? "Unassigned"}</span>
+                    </span>
+                  </div>
+                  <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0", config.className)}>
+                    <StatusIcon size={10} />
+                    {config.label}
+                  </span>
+                </div>
+                {/* Body */}
+                <div className="px-4 py-3">
+                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{task.body}</p>
+                </div>
+                {/* Footer */}
+                <div className="px-4 py-2 bg-muted/30 border-t flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Clock size={11} />
+                    {formatDateTime(task.createdAt)}
+                  </span>
+                  <ChevronRight size={14} className="text-muted-foreground" />
+                </div>
+              </a>
+            );
+          })}
         </div>
       )}
-    </div>
+    </AppPage>
   );
 }
 
@@ -223,13 +223,7 @@ export default function HomePage() {
       }}
       onSignOut={() => signOut()}
     >
-      <AppPage
-        breadcrumbs={[{ label: "Tasks" }, { label: "My Tasks" }]}
-        title="My Tasks"
-        description="Tasks assigned to you across all departments"
-      >
-        <MyTasksInner slugs={slugs} />
-      </AppPage>
+      <MyTasksContent slugs={slugs} />
     </AppLayout>
   );
 }
