@@ -1,10 +1,17 @@
 "use client";
 
 import { AgentStream } from "@/components/agent-stream";
+import { AssignPicker } from "@/components/assign-picker";
 import { LinkPreviews } from "@/components/link-preview";
-import { fetchMessages, fetchServices, fetchTask, getSessionStatus, performAction } from "@/lib/api";
+import { fetchMessages, fetchServices, fetchTask, getSessionStatus, performAction, updateTask as updateTaskApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useClerk, useUser } from "@clerk/clerk-react";
 import { AppLayout } from "@cometa/ui/app-layout";
+import { AppPage } from "@cometa/ui/app-page";
+import { DetailPanel } from "@cometa/ui/detail-panel";
+import { Badge } from "@cometa/ui/ui/badge";
+import { Button } from "@cometa/ui/ui/button";
+import { Card, CardContent, CardFooter } from "@cometa/ui/ui/card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -12,58 +19,87 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Copy,
   ListTodo,
   Loader2,
   MessageSquare,
+  PanelRight,
   User,
-  Wrench,
+  UserPlus,
   XCircle,
 } from "lucide-react";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Pending", className: "bg-amber-50 text-amber-700", icon: Clock },
-  assigned: { label: "Assigned", className: "bg-blue-50 text-blue-700", icon: MessageSquare },
-  processing: { label: "Processing", className: "bg-blue-50 text-blue-700", icon: Loader2 },
-  awaiting_approval: {
-    label: "Awaiting Approval",
-    className: "bg-amber-50 text-amber-700",
-    icon: AlertTriangle,
-  },
-  completed: {
-    label: "Completed",
-    className: "bg-emerald-50 text-emerald-700",
-    icon: CheckCircle2,
-  },
-  failed: { label: "Failed", className: "bg-red-50 text-red-700", icon: AlertTriangle },
+  open: { label: "Open", className: "bg-amber-50 text-amber-700 border-amber-200/60", icon: Clock },
+  in_progress: { label: "In Progress", className: "bg-blue-50 text-blue-700 border-blue-200/60", icon: Loader2 },
+  review: { label: "Review", className: "bg-violet-50 text-violet-700 border-violet-200/60", icon: AlertTriangle },
+  done: { label: "Done", className: "bg-emerald-50 text-emerald-700 border-emerald-200/60", icon: CheckCircle2 },
 };
 
-const serviceMeta: Record<string, { label: string; description: string }> = {
-  accounting: { label: "Accounting", description: "Invoices, expenses, payments" },
-  legal: { label: "Legal", description: "Contracts, compliance, reviews" },
-  hr: { label: "Human Resources", description: "Hiring, onboarding, leave" },
-  engineering: { label: "Engineering", description: "Bugs, deployments, infra" },
-  marketing: { label: "Marketing", description: "Campaigns, content, analytics" },
+const serviceMeta: Record<string, { label: string }> = {
+  accounting: { label: "Accounting" },
+  legal: { label: "Legal" },
+  hr: { label: "Human Resources" },
+  engineering: { label: "Engineering" },
+  marketing: { label: "Marketing" },
+  operations: { label: "Operations" },
 };
+
+function linkify(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+        {part}
+      </a>
+    ) : part,
+  );
+}
+
+function formatDateTime(date: string) {
+  return new Date(date).toLocaleDateString("en-ZA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatRelative(date: string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 export default function TaskDetailPage() {
-  const params = useParams<{ slug: string; taskId: string }>();
   const pathname = usePathname();
-  // Static export bakes placeholder params — read real values from URL
   const { slug, taskId } = useMemo(() => {
     const parts = pathname.split("/").filter(Boolean);
-    // URL shape: /accounting/tasks/abc-123
     if (parts.length >= 3 && parts[1] === "tasks") {
       return { slug: parts[0]!, taskId: parts[2]! };
     }
-    return { slug: params.slug, taskId: params.taskId };
-  }, [pathname, params]);
+    return { slug: "", taskId: "" };
+  }, [pathname]);
+
+  const { signOut } = useClerk();
+  const { user } = useUser();
   const queryClient = useQueryClient();
-  const [comment, setComment] = useState("");
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelTab, setPanelTab] = useState<"details" | "activity">("details");
+  const [showAssign, setShowAssign] = useState(false);
+  const [showReviewer, setShowReviewer] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data: servicesData } = useQuery({
@@ -71,20 +107,21 @@ export default function TaskDetailPage() {
     queryFn: fetchServices,
   });
 
-  const { data: taskData, isLoading } = useQuery({
+  const { data: task, isLoading } = useQuery({
     queryKey: ["task", slug, taskId],
     queryFn: () => fetchTask(slug, taskId),
+    enabled: !!slug && !!taskId && taskId !== "_",
     refetchInterval: 10_000,
   });
 
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ["messages", slug, taskData?.traceId],
+  const { data: messages = [] } = useQuery({
+    queryKey: ["messages", slug, task?.traceId],
     queryFn: () => fetchMessages(slug),
-    enabled: !!taskData,
+    enabled: !!task,
     refetchInterval: 10_000,
     select: (data: any) => {
       const msgs = data?.items ?? [];
-      return taskData?.traceId ? msgs.filter((m: any) => m.traceId === taskData.traceId) : msgs;
+      return task?.traceId ? msgs.filter((m: any) => m.traceId === task.traceId) : msgs;
     },
   });
 
@@ -98,32 +135,24 @@ export default function TaskDetailPage() {
     },
   });
 
-  const approveMutation = useMutation({
-    mutationFn: () => performAction(slug, taskId, "approve", comment ? { comment } : undefined),
-    onSuccess: () => {
-      toast.success("Task approved");
-      setComment("");
+  const assignMutation = useMutation({
+    mutationFn: ({ email }: { email: string }) => updateTaskApi(slug, taskId, { assignedTo: email || undefined }),
+    onSuccess: (_, { email }) => {
+      toast.success(email ? `Assigned to ${email}` : "Unassigned");
       queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] });
     },
-    onError: () => toast.error("Failed to approve"),
+    onError: () => toast.error("Failed to assign"),
   });
 
-  const rejectMutation = useMutation({
-    mutationFn: () => performAction(slug, taskId, "reject", comment ? { comment } : undefined),
-    onSuccess: () => {
-      toast.success("Task rejected");
-      setComment("");
-      queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] });
-    },
-    onError: () => toast.error("Failed to reject"),
+  const statusMutation = useMutation({
+    mutationFn: (action: string) => performAction(slug, taskId, action),
+    onSuccess: () => { toast.success("Status updated"); queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] }); },
+    onError: () => toast.error("Failed to update"),
   });
 
-  const task = taskData;
-  const messages = messagesData ?? [];
-  const isAwaitingApproval = task?.status === "awaiting_approval";
-  const isPending = approveMutation.isPending || rejectMutation.isPending;
-
-  const meta = serviceMeta[slug] ?? { label: slug.charAt(0).toUpperCase() + slug.slice(1), description: "" };
+  const meta = serviceMeta[slug] ?? { label: slug };
+  const config = statusConfig[task?.status ?? "open"] ?? statusConfig.open;
+  const StatusIcon = config.icon;
 
   const slugs = servicesData?.services?.length
     ? servicesData.services.map((s: any) => s.slug)
@@ -137,173 +166,461 @@ export default function TaskDetailPage() {
       icon: Building2,
       isActive: true,
       items: slugs.map((s: string) => ({
-        title: serviceMeta[s]?.label ?? s.charAt(0).toUpperCase() + s.slice(1),
+        title: serviceMeta[s]?.label ?? s,
         url: `/${s}`,
       })),
     },
   ];
 
-  const content = isLoading ? (
-    <div className="flex justify-center py-16">
-      <Loader2 size={20} className="animate-spin text-muted-foreground" />
-    </div>
-  ) : !task ? (
-    <p className="text-sm text-muted-foreground text-center py-16">Task not found</p>
-  ) : (
-    <div className="space-y-6 max-w-3xl">
-      <div className="border border-border rounded-lg p-5 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-relaxed">{task.body}</p>
-            <LinkPreviews text={task.body ?? ""} />
-          </div>
-          <span
-            className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full",
-              (statusConfig[task.status] ?? statusConfig.pending).className,
-            )}
-          >
-            {(() => {
-              const cfg = statusConfig[task.status] ?? statusConfig.pending;
-              const Icon = cfg.icon;
-              return <><Icon size={11} />{cfg.label}</>;
-            })()}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-          {task.type && task.type !== "request" && (
-            <div className="flex items-center gap-1.5">
-              <MessageSquare size={12} />
-              <span className="capitalize">{task.type.replace(/-/g, " ")}</span>
-            </div>
-          )}
-          {task.assignedTo && (
-            <div className="flex items-center gap-1.5">
-              <User size={12} />
-              <span>{task.assignedTo}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <Clock size={12} />
-            <span>
-              {new Date(task.createdAt).toLocaleDateString("en-ZA", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(task.id);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 hover:bg-muted transition-colors font-mono text-[11px] text-muted-foreground"
-            title="Copy task ID"
-          >
-            <span className="max-w-[120px] truncate">{task.id}</span>
-            {copied ? (
-              <Check size={10} className="shrink-0 text-emerald-500" />
-            ) : (
-              <Copy size={10} className="shrink-0" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {sessionData?.sessionId && (
-        <AgentStream
-          slug={slug}
-          taskId={taskId}
-          sessionId={sessionData.sessionId}
-          onComplete={() => queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] })}
-        />
-      )}
-
-      <div>
-        <h3 className="text-sm font-semibold mb-3">Messages</h3>
-        {messagesLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No messages yet</p>
-        ) : (
-          <div className="space-y-2">
-            {messages.map((msg: any, i: number) => (
-              <div key={msg.id ?? i} className="border border-border rounded-lg p-4 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium">
-                    {msg.from === "gateway" ? "You" : msg.from}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {new Date(msg.timestamp).toLocaleDateString("en-ZA", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{msg.body}</p>
-                <LinkPreviews text={msg.body ?? ""} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isAwaitingApproval && (
-        <div className="border border-border rounded-lg p-5 space-y-3">
-          <h3 className="text-sm font-semibold">Action required</h3>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Optional comment..."
-            rows={2}
-            className="w-full text-sm p-3 rounded-md border border-border bg-muted/30 outline-none focus:border-ring resize-none placeholder:text-muted-foreground/50"
-          />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => rejectMutation.mutate()}
-              disabled={isPending}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50 transition-colors"
-            >
-              {rejectMutation.isPending ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <XCircle size={12} />
-              )}
-              Reject
-            </button>
-            <button
-              onClick={() => approveMutation.mutate()}
-              disabled={isPending}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {approveMutation.isPending ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <CheckCircle2 size={12} />
-              )}
-              Approve
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const typeLabel = task?.type?.replace(/[_-]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) ?? "";
 
   return (
     <AppLayout
-      breadcrumbs={[{ label: "Tasks" }, { label: meta.label }, { label: "Task" }]}
       navItems={navItems}
-      onSignOut={() => {}}
+      user={{
+        name: user?.fullName || "User",
+        email: user?.primaryEmailAddress?.emailAddress || "",
+        avatar: user?.imageUrl || "",
+      }}
+      onSignOut={() => signOut()}
     >
-      {content}
+      <AppPage
+        breadcrumbs={[{ label: "Tasks" }, { label: meta.label, href: `/${slug}` }, { label: typeLabel || "Task" }]}
+        title={typeLabel || "Task"}
+        actions={
+          <>
+            {task && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`Take on task #${taskId} in ${slug} and start working on it. The task is: ${task.body.slice(0, 100)}`);
+                    toast.success("Prompt copied — paste into Claude");
+                  }}
+                >
+                  <Copy size={12} />
+                  Take Task
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`From task #${taskId} in ${slug}, create a linked task in [department] for: [describe what needs to be done]`);
+                    toast.success("Prompt copied — paste into Claude");
+                  }}
+                >
+                  <Building2 size={12} />
+                  Link Task
+                </Button>
+              </>
+            )}
+            <Button
+              variant={panelOpen ? "secondary" : "ghost"}
+              size="icon"
+              className="size-8"
+              onClick={() => setPanelOpen(!panelOpen)}
+            >
+              <PanelRight className="size-4" />
+            </Button>
+          </>
+        }
+        noPadding
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 size={20} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : !task ? (
+          <p className="text-sm text-muted-foreground text-center py-20">Task not found</p>
+        ) : (
+          <div className="flex flex-1 min-h-0">
+            {/* Main content */}
+            <div className={cn("flex-1 min-w-0 overflow-y-auto", panelOpen && "border-r")}>
+              <div className="max-w-2xl mx-auto px-6 py-6 space-y-4">
+                {/* Task body */}
+                <Card className={task.metadata?.parentTaskId ? "pt-0" : ""}>
+                  {/* Spawned from reference */}
+                  {task.metadata?.parentTaskId && (
+                    <a
+                      href={`/${task.metadata.parentDepartment}/tasks/${task.metadata.parentTaskId}`}
+                      className="flex items-center gap-3 px-4 py-3 border-b bg-blue-50/50 hover:bg-blue-50 transition-colors group"
+                    >
+                      <div className="size-7 rounded bg-blue-100 flex items-center justify-center shrink-0">
+                        <Building2 size={13} className="text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-blue-700">
+                          Spawned from <span className="capitalize">{task.metadata.parentDepartment as string}</span>
+                        </p>
+                        <p className="text-[11px] text-blue-600/60 font-mono">{String(task.metadata.parentTaskId).slice(0, 12)}</p>
+                      </div>
+                      <ChevronRight size={14} className="text-blue-400 group-hover:text-blue-600 shrink-0" />
+                    </a>
+                  )}
+                  <CardContent>
+                    <p className="text-sm leading-relaxed">{linkify(task.body)}</p>
+                  </CardContent>
+                  <CardFooter className="flex-col items-stretch gap-0 p-0">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={11} />
+                          {formatDateTime(task.createdAt)}
+                        </span>
+                        {task.assignedTo && (
+                          <span className="flex items-center gap-1.5">
+                            <User size={11} />
+                            {task.assignedTo === "agent" ? "AI Agent" : task.assignedTo}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(task.id);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors font-mono"
+                      >
+                        {task.id.slice(0, 8)}
+                        {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
+                      </button>
+                    </div>
+                    {/* Action pills */}
+                    {(task.status === "open" || task.status === "in_progress" || task.status === "review") && (
+                      <div className="flex items-center gap-2 px-4 py-3 border-t">
+                        {task.status === "open" && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => statusMutation.mutate("start")} disabled={statusMutation.isPending}>
+                              <Loader2 size={12} /> Start
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => statusMutation.mutate("done")} disabled={statusMutation.isPending}>
+                              <CheckCircle2 size={12} /> Done
+                            </Button>
+                          </>
+                        )}
+                        {task.status === "in_progress" && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => statusMutation.mutate("review")} disabled={statusMutation.isPending}>
+                              <AlertTriangle size={12} /> Request Review
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => statusMutation.mutate("done")} disabled={statusMutation.isPending}>
+                              <CheckCircle2 size={12} /> Done
+                            </Button>
+                          </>
+                        )}
+                        {task.status === "review" && (
+                          <>
+                            <Button size="sm" onClick={() => statusMutation.mutate("approve")} disabled={statusMutation.isPending}>
+                              <CheckCircle2 size={12} /> Approve
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => statusMutation.mutate("reject")} disabled={statusMutation.isPending}>
+                              <XCircle size={12} /> Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </CardFooter>
+                </Card>
+
+                {/* Agent session */}
+                {sessionData?.sessionId && (
+                  <AgentStream
+                    slug={slug}
+                    taskId={taskId}
+                    sessionId={sessionData.sessionId}
+                    onComplete={() => queryClient.invalidateQueries({ queryKey: ["task", slug, taskId] })}
+                  />
+                )}
+
+                {/* Add message button */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`Add a message to task #${taskId} in ${slug}: [your message here]`);
+                      toast.success("Prompt copied — paste into Claude");
+                    }}
+                  >
+                    <MessageSquare size={12} />
+                    Add Message
+                  </Button>
+                </div>
+
+                {/* Messages thread — timeline cards */}
+                {messages.length > 0 && (
+                  <div className="relative pt-2">
+                    {/* Timeline line */}
+                    <div className="absolute left-[13px] top-6 bottom-4 w-px bg-border" />
+
+                    <div className="space-y-0">
+                      {messages.map((msg: any, i: number) => {
+                        const isAgent = msg.from === "agent";
+                        const isGateway = msg.from === "gateway";
+                        const isSystem = msg.type === "system";
+                        const data = msg.data ?? {};
+
+                        return (
+                          <div key={msg.id ?? i} className="relative flex gap-3 pb-4">
+                            {/* Timeline dot */}
+                            <div className={cn(
+                              "size-7 rounded-full flex items-center justify-center shrink-0 z-10 ring-4 ring-background",
+                              isAgent ? "bg-violet-100" : isGateway ? "bg-blue-100" : "bg-muted",
+                            )}>
+                              {isAgent ? <Bot size={13} className="text-violet-600" /> :
+                               isGateway ? <User size={13} className="text-blue-600" /> :
+                               <Building2 size={13} className="text-muted-foreground" />}
+                            </div>
+
+                            {/* Card */}
+                            <div className={cn(
+                              "flex-1 min-w-0 rounded-lg border p-4",
+                              isSystem ? "bg-muted/30 border-dashed" : "bg-card",
+                            )}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold">
+                                  {isAgent ? "AI Agent" : isGateway ? "You" : msg.from}
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] font-normal">
+                                  <Clock size={10} />
+                                  {formatRelative(msg.timestamp)}
+                                </Badge>
+                              </div>
+
+                              <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                                {linkify(msg.body)}
+                              </p>
+
+                              {/* Document reference */}
+                              {msg.type === "document" && data.documentName && (
+                                <div className="mt-3 flex items-center gap-3 rounded-md border p-2.5 bg-muted/30">
+                                  <div className="size-8 rounded bg-red-50 flex items-center justify-center shrink-0">
+                                    <span className="text-[10px] font-bold text-red-600">PDF</span>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate">{data.documentName}</p>
+                                    {data.documentType && <p className="text-xs text-muted-foreground capitalize">{data.documentType}</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Linked task */}
+                              {msg.type === "task" && data.linkedDepartment && (
+                                <a
+                                  href={`/${data.linkedDepartment}/tasks/${data.linkedTaskId}`}
+                                  className="mt-3 flex items-center gap-3 rounded-md border p-2.5 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                                >
+                                  <div className="size-8 rounded bg-blue-50 flex items-center justify-center shrink-0">
+                                    <Building2 size={14} className="text-blue-600" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium capitalize">{data.linkedDepartment}</p>
+                                    <p className="text-xs text-muted-foreground">{data.linkedTaskId ? `Task ${String(data.linkedTaskId).slice(0, 12)}` : "Linked task"}</p>
+                                  </div>
+                                  {data.linkedTaskStatus && (
+                                    <Badge className={cn("border text-[10px]", (statusConfig[data.linkedTaskStatus as string] ?? statusConfig.open).className)}>
+                                      {(statusConfig[data.linkedTaskStatus as string] ?? statusConfig.open).label}
+                                    </Badge>
+                                  )}
+                                </a>
+                              )}
+
+                              {/* Approval waiting */}
+                              {msg.type === "approval" && !data.decision && task?.status === "review" && (
+                                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/50 p-2.5">
+                                  <div className="flex items-center gap-2 text-xs font-medium text-amber-700">
+                                    <AlertTriangle size={12} />
+                                    Waiting for your decision
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Approval result */}
+                              {msg.type === "approval" && data.decision && (
+                                <div className={cn("mt-3 rounded-md border p-2.5", data.decision === "approved" ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50")}>
+                                  <div className={cn("flex items-center gap-2 text-xs font-medium", data.decision === "approved" ? "text-emerald-700" : "text-red-700")}>
+                                    {data.decision === "approved" ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                                    {data.decision === "approved" ? "Approved" : "Rejected"}
+                                    {data.approvedBy && <span className="font-normal">by {data.approvedBy as string}</span>}
+                                  </div>
+                                </div>
+                              )}
+
+                              <LinkPreviews text={msg.body ?? ""} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Detail panel with tabs */}
+            <DetailPanel open={panelOpen} onOpenChange={setPanelOpen}>
+              {/* Tabs */}
+              <div className="flex border-b shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPanelTab("details")}
+                  className={cn(
+                    "flex-1 py-2.5 text-sm font-medium text-center transition-colors",
+                    panelTab === "details" ? "border-b-2 border-foreground text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPanelTab("activity")}
+                  className={cn(
+                    "flex-1 py-2.5 text-sm font-medium text-center transition-colors relative",
+                    panelTab === "activity" ? "border-b-2 border-foreground text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Activity
+                  {messages.length > 0 && (
+                    <span className="ml-1.5 text-[10px] bg-muted rounded-full px-1.5 py-0.5">{messages.length}</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Details tab */}
+              {panelTab === "details" && (
+                <div className="p-4 space-y-4">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge className={cn("border text-[11px]", config.className)}>
+                        <StatusIcon size={10} />
+                        {config.label}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Department</span>
+                      <span className="font-medium">{meta.label}</span>
+                    </div>
+                    {task.type && task.type !== "request" && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Type</span>
+                        <span className="font-medium capitalize">{task.type.replace(/[_-]/g, " ")}</span>
+                      </div>
+                    )}
+                    {/* Assignee card */}
+                    <div className="relative">
+                      <p className="text-xs text-muted-foreground mb-1.5">Assigned to</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAssign(!showAssign)}
+                        className="w-full flex items-center gap-2.5 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <div className="size-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                          {task.assignedTo ? (
+                            <User size={13} className="text-violet-600" />
+                          ) : (
+                            <UserPlus size={13} className="text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {task.assignedTo === "agent" ? "AI Agent" : task.assignedTo ?? "Unassigned"}
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                      </button>
+                      <AssignPicker
+                        open={showAssign}
+                        onOpenChange={setShowAssign}
+                        currentAssignee={task.assignedTo}
+                        onAssign={(userId, email) => {
+                          assignMutation.mutate({ email });
+                        }}
+                      />
+                    </div>
+
+                    {/* Reviewer card */}
+                    <div className="relative">
+                      <p className="text-xs text-muted-foreground mb-1.5">Review by</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowReviewer(!showReviewer)}
+                        className="w-full flex items-center gap-2.5 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <div className="size-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                          {task.metadata?.reviewBy ? (
+                            <User size={13} className="text-amber-600" />
+                          ) : (
+                            <UserPlus size={13} className="text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {(task.metadata?.reviewBy as string) ?? "Not set"}
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                      </button>
+                      <AssignPicker
+                        open={showReviewer}
+                        onOpenChange={setShowReviewer}
+                        currentAssignee={task.metadata?.reviewBy as string}
+                        onAssign={(userId, email) => {
+                          assignMutation.mutate({ email });
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Created</span>
+                      <span className="text-xs tabular-nums">{formatDateTime(task.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Activity tab — simple event log */}
+              {panelTab === "activity" && (
+                <div className="p-4">
+                  {messages.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No activity yet</p>
+                  ) : (
+                    <div className="space-y-0">
+                      {messages.map((msg: any, i: number) => {
+                        const isAgent = msg.from === "agent";
+                        const isGateway = msg.from === "gateway";
+                        const sender = isAgent ? "AI Agent" : isGateway ? "You" : msg.from;
+                        const action = msg.type === "document" ? "attached a document"
+                          : msg.type === "task" ? "linked a task"
+                          : msg.type === "approval" ? (msg.data?.decision === "approved" ? "approved" : msg.data?.decision === "rejected" ? "rejected" : "requested approval")
+                          : msg.type === "system" ? "system update"
+                          : "posted a message";
+
+                        return (
+                          <div key={msg.id ?? i} className="flex items-start gap-2 py-2 border-b border-dashed last:border-0">
+                            <div className="size-1.5 rounded-full bg-muted-foreground/30 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs">
+                                <span className="font-medium">{sender}</span>
+                                <span className="text-muted-foreground"> {action}</span>
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">{formatRelative(msg.timestamp)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </DetailPanel>
+          </div>
+        )}
+      </AppPage>
     </AppLayout>
   );
 }

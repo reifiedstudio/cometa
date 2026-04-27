@@ -2,6 +2,7 @@
 
 import DocumentDetail from "@/components/document-detail";
 import { IntakeLayout } from "@/components/intake-layout";
+import { AppPage } from "@cometa/ui/app-page";
 import { usePathname } from "next/navigation";
 
 export default function DocumentPage() {
@@ -10,9 +11,14 @@ export default function DocumentPage() {
 
   return (
     <IntakeLayout active="documents">
-      {documentId && documentId !== "_" ? (
-        <DocumentDetail documentId={documentId} />
-      ) : null}
+      <AppPage
+        breadcrumbs={[{ label: "Intake" }, { label: "Documents", href: "/documents" }, { label: documentId.slice(0, 8) }]}
+        noPadding
+      >
+        {documentId && documentId !== "_" ? (
+          <DocumentDetail documentId={documentId} />
+        ) : null}
+      </AppPage>
     </IntakeLayout>
   );
 }

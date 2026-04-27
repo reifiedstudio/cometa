@@ -1,15 +1,22 @@
 const API_URL =
   process.env.NEXT_PUBLIC_TASKS_API_URL ??
-  "https://mcp.daniellourie.me/api/tasks";
+  "https://c5c2pqmpitjtmcaqfx63cd43bq0mxzmr.lambda-url.us-east-1.on.aws";
+
+// Token getter — set by the app once Clerk is available
+let _getToken: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(fn: () => Promise<string | null>) {
+  _getToken = fn;
+}
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      "Content-Type": "application/json",
-    },
-  });
+  const token = _getToken ? await _getToken() : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`${API_URL}${path}`, { ...options, headers });
 }
 
 // ── Services ──
@@ -53,6 +60,19 @@ export async function fetchTasks(slug: string, status?: string) {
 export async function fetchTask(slug: string, taskId: string) {
   const res = await apiFetch(`/api/services/${slug}/tasks/${taskId}`);
   if (!res.ok) throw new Error("Failed to fetch task");
+  return res.json();
+}
+
+export async function updateTask(
+  slug: string,
+  taskId: string,
+  updates: { assignedTo?: string; status?: string },
+) {
+  const res = await apiFetch(`/api/services/${slug}/tasks/${taskId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error("Failed to update task");
   return res.json();
 }
 

@@ -3,15 +3,35 @@ export interface ServiceMessage {
   traceId: string;
   from: string;
   to: string;
-  type: "task" | "approval" | "action" | "system";
+  type: "message" | "task" | "document" | "approval" | "action" | "system";
   body: string;
   referenceId?: string;
+  /** Structured data for rich message types */
+  data?: MessageData;
   attachments?: Attachment[];
   status: "queued" | "processing" | "completed" | "failed";
   error?: string;
   userId?: string;
   userEmail?: string;
   timestamp: string;
+}
+
+/** Typed data payloads for different message types */
+export interface MessageData {
+  /** type: "task" — linked task in another department */
+  linkedTaskId?: string;
+  linkedDepartment?: string;
+  linkedTaskStatus?: string;
+  /** type: "document" — reference to a document */
+  documentId?: string;
+  documentName?: string;
+  documentType?: string;
+  documentUrl?: string;
+  /** type: "approval" — approval result */
+  decision?: "approved" | "rejected";
+  approvedBy?: string;
+  /** Generic key-value for extensibility */
+  [key: string]: unknown;
 }
 
 export interface Attachment {
@@ -25,7 +45,7 @@ export interface Task {
   department: string;
   traceId: string;
   type: string;
-  status: "pending" | "assigned" | "processing" | "awaiting_approval" | "completed" | "failed";
+  status: "open" | "in_progress" | "review" | "done";
   assignedTo?: string;
   body: string;
   messages: string[];

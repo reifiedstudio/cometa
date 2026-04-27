@@ -76,7 +76,7 @@ export function registerTaskTools(server: McpServer): void {
       referenceId: z.string().optional().describe("Task ID this message relates to"),
     },
     async ({ to, body, type, traceId, referenceId }) => {
-      const message = await sendMessage("agent", to, body, {
+      const message = await sendMessage("gateway", to, body, {
         type,
         traceId,
         referenceId,
@@ -259,6 +259,69 @@ export function registerTaskTools(server: McpServer): void {
   );
 
   server.tool(
+    "link_task",
+    "Link a related task to an existing task. Posts a reference card in the task thread showing the linked task and its status. Use this after creating a cross-department task to connect them visually.",
+    {
+      taskId: z.string().describe("The task to post the link into"),
+      linkedTaskId: z.string().describe("The task being linked to"),
+      linkedDepartment: z.string().describe("Department of the linked task (e.g. 'legal')"),
+      message: z.string().optional().describe("Context for why the tasks are linked"),
+    },
+    async ({ taskId, linkedTaskId, linkedDepartment, message: body }) => {
+      const task = await getTask(taskId);
+      if (!task) {
+        return { content: [{ type: "text" as const, text: "Task not found." }], isError: true };
+      }
+
+      const linkedTask = await getTask(linkedTaskId);
+      const linkedStatus = linkedTask?.status ?? "open";
+
+      const now = new Date().toISOString();
+      const msg: ServiceMessage = {
+        id: randomUUID(),
+        traceId: task.traceId,
+        from: "gateway",
+        to: task.department,
+        type: "task",
+        body: body ?? `Linked task in ${linkedDepartment}`,
+        referenceId: taskId,
+        data: {
+          linkedTaskId,
+          linkedDepartment,
+          linkedTaskStatus: linkedStatus,
+        },
+        status: "completed",
+        timestamp: now,
+      };
+
+      await putMessage(msg);
+      await updateTask(taskId, {
+        messages: [...task.messages, msg.id],
+      });
+
+      // Store back-reference on the linked task so it knows where it came from
+      if (linkedTask) {
+        await updateTask(linkedTaskId, {
+          metadata: {
+            ...linkedTask.metadata,
+            parentTaskId: taskId,
+            parentDepartment: task.department,
+          },
+        });
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Linked task ${linkedTaskId} (${linkedDepartment}) to task ${taskId}.`,
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
     "perform_action",
     "Perform an action on a task (approve, reject, reassign). Creates an action message and routes it for processing.",
     {
@@ -278,7 +341,7 @@ export function registerTaskTools(server: McpServer): void {
       if (assignTo) parts.push(`Assign to: ${assignTo}`);
       if (comment) parts.push(`Comment: ${comment}`);
 
-      const message = await sendMessage("agent", department, parts.join(". "), {
+      const message = await sendMessage("gateway", department, parts.join(". "), {
         type: "action",
         traceId: task.traceId,
         referenceId: taskId,

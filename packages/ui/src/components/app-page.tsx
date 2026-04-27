@@ -22,12 +22,16 @@ interface BreadcrumbItem {
 interface AppPageProps {
   /** Breadcrumb trail shown above the title */
   breadcrumbs?: BreadcrumbItem[]
-  /** Page title */
-  title: string
+  /** Page title — omit to hide the title bar */
+  title?: string
   /** Description shown below the title */
   description?: string
   /** Action slot — rendered on the right side of the title row */
   actions?: React.ReactNode
+  /** Toolbar left slot — rendered between title and content */
+  toolbar?: React.ReactNode
+  /** Toolbar right slot */
+  toolbarRight?: React.ReactNode
   /** Page content */
   children: React.ReactNode
   /** Remove default padding from the content area */
@@ -56,6 +60,8 @@ export function AppPage({
   title,
   description,
   actions,
+  toolbar,
+  toolbarRight,
   children,
   noPadding,
   className,
@@ -64,7 +70,7 @@ export function AppPage({
     <div className={cn("flex flex-col flex-1 min-h-0", className)}>
       {/* Breadcrumbs */}
       {breadcrumbs && (
-        <div className="flex h-12 shrink-0 items-center gap-2 px-4">
+        <div className="flex h-12 shrink-0 items-center gap-2 px-4 border-b">
           <SidebarTrigger className="-ml-1" />
           <Breadcrumb>
             <BreadcrumbList>
@@ -91,15 +97,25 @@ export function AppPage({
       )}
 
       {/* Title bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-        <div>
-          <h1 className="text-lg font-semibold">{title}</h1>
-          {description && (
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-          )}
+      {title && (
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+          <div>
+            <h1 className="text-lg font-semibold">{title}</h1>
+            {description && (
+              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            )}
+          </div>
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
-      </div>
+      )}
+
+      {/* Toolbar */}
+      {(toolbar || toolbarRight) && (
+        <div className="flex items-center justify-between px-6 py-2 border-b shrink-0">
+          <div>{toolbar}</div>
+          <div>{toolbarRight}</div>
+        </div>
+      )}
 
       {/* Content */}
       <div className={cn("flex-1 min-h-0", noPadding ? "flex flex-col" : "overflow-y-auto px-6 py-4")}>

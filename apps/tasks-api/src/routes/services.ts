@@ -215,6 +215,26 @@ app.get(
   },
 );
 
+// ── Update a task ──
+
+app.patch(
+  "/:slug/tasks/:id",
+  async (c) => {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const task = await getTask(id);
+    if (!task) return c.json({ error: "Task not found" }, 404);
+
+    const updates: Record<string, unknown> = {};
+    if (body.assignedTo !== undefined) updates.assignedTo = body.assignedTo;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.body !== undefined) updates.body = body.body;
+
+    await updateTask(id, updates);
+    return c.json({ id, ...updates });
+  },
+);
+
 // ── Perform an action on a task ──
 
 app.post(

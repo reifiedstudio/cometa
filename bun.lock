@@ -314,6 +314,7 @@
     "apps/tasks": {
       "name": "@cometa/tasks",
       "dependencies": {
+        "@clerk/clerk-react": "^5.61.3",
         "@cometa/ui": "workspace:*",
         "@tanstack/react-query": "^5.96.2",
         "clsx": "^2.1.1",

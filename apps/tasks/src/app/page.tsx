@@ -2,7 +2,9 @@
 
 import { fetchServices, fetchTasks } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useClerk, useUser } from "@clerk/clerk-react";
 import { AppLayout } from "@cometa/ui/app-layout";
+import { AppPage } from "@cometa/ui/app-page";
 import { useQuery } from "@tanstack/react-query";
 import {
   ListTodo,
@@ -21,12 +23,10 @@ import { useState } from "react";
 // ── Status config ──
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Pending", className: "bg-amber-50 text-amber-700 border-amber-200/60", icon: Clock },
-  assigned: { label: "Assigned", className: "bg-blue-50 text-blue-700 border-blue-200/60", icon: MessageSquare },
-  processing: { label: "Processing", className: "bg-blue-50 text-blue-700 border-blue-200/60", icon: Loader2 },
-  awaiting_approval: { label: "Approval", className: "bg-amber-50 text-amber-700 border-amber-200/60", icon: AlertTriangle },
-  completed: { label: "Done", className: "bg-emerald-50 text-emerald-700 border-emerald-200/60", icon: CheckCircle2 },
-  failed: { label: "Failed", className: "bg-red-50 text-red-700 border-red-200/60", icon: AlertTriangle },
+  open: { label: "Open", className: "bg-amber-50 text-amber-700 border-amber-200/60", icon: Clock },
+  in_progress: { label: "In Progress", className: "bg-blue-50 text-blue-700 border-blue-200/60", icon: Loader2 },
+  review: { label: "Review", className: "bg-violet-50 text-violet-700 border-violet-200/60", icon: AlertTriangle },
+  done: { label: "Done", className: "bg-emerald-50 text-emerald-700 border-emerald-200/60", icon: CheckCircle2 },
 };
 
 const serviceMeta: Record<string, { label: string; description: string }> = {
@@ -49,7 +49,7 @@ function formatDateTime(date: string) {
 // ── Task card ──
 
 function TaskCard({ task, slug, showDepartment }: { task: any; slug: string; showDepartment?: boolean }) {
-  const config = statusConfig[task.status] ?? statusConfig.pending;
+  const config = statusConfig[task.status] ?? statusConfig.open;
   const StatusIcon = config.icon;
   const meta = serviceMeta[slug];
 
@@ -100,7 +100,7 @@ function TaskCard({ task, slug, showDepartment }: { task: any; slug: string; sho
 
 // ── My Tasks page ──
 
-function MyTasksContent({ slugs }: { slugs: string[] }) {
+function MyTasksInner({ slugs }: { slugs: string[] }) {
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Fetch tasks from all services
@@ -119,37 +119,31 @@ function MyTasksContent({ slugs }: { slugs: string[] }) {
   );
 
   const myTasks = allTasks
-    .filter((t: any) => t.status === "awaiting_approval" || t.status === "processing" || t.status === "assigned")
-    .filter((t: any) => statusFilter === "all" || t.status === statusFilter);
+    .filter((t: any) => t.status !== "done")
+    .filter((t: any) => statusFilter === "all" || t.status === statusFilter)
+    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const approvalCount = allTasks.filter((t: any) => t.status === "awaiting_approval").length;
-  const processingCount = allTasks.filter((t: any) => t.status === "processing").length;
-  const completedCount = allTasks.filter((t: any) => t.status === "completed").length;
+  const reviewCount = allTasks.filter((t: any) => t.status === "review").length;
+  const inProgressCount = allTasks.filter((t: any) => t.status === "in_progress").length;
+  const doneCount = allTasks.filter((t: any) => t.status === "done").length;
   const isLoading = queries.some((q) => q.isLoading);
 
-  const filters = ["all", "awaiting_approval", "processing"] as const;
+  const filters = ["all", "review", "in_progress", "open"] as const;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">My Tasks</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Tasks assigned to you across all departments
-        </p>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Awaiting Approval</p>
-          <p className="text-2xl font-semibold mt-1 text-amber-600">{approvalCount}</p>
+          <p className="text-sm text-muted-foreground">Needs Review</p>
+          <p className="text-2xl font-semibold mt-1 text-violet-600">{reviewCount}</p>
         </div>
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Processing</p>
-          <p className="text-2xl font-semibold mt-1 text-blue-600">{processingCount}</p>
+          <p className="text-sm text-muted-foreground">In Progress</p>
+          <p className="text-2xl font-semibold mt-1 text-blue-600">{inProgressCount}</p>
         </div>
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Completed</p>
-          <p className="text-2xl font-semibold mt-1 text-emerald-600">{completedCount}</p>
+          <p className="text-sm text-muted-foreground">Done</p>
+          <p className="text-2xl font-semibold mt-1 text-emerald-600">{doneCount}</p>
         </div>
       </div>
 
@@ -166,7 +160,7 @@ function MyTasksContent({ slugs }: { slugs: string[] }) {
                 : "text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >
-            {f === "all" ? "All" : f === "awaiting_approval" ? "Approval" : f}
+            {f === "all" ? "All" : f === "in_progress" ? "In Progress" : f === "review" ? "Review" : f === "open" ? "Open" : f}
           </button>
         ))}
       </div>
@@ -194,6 +188,8 @@ function MyTasksContent({ slugs }: { slugs: string[] }) {
 // ── Main page ──
 
 export default function HomePage() {
+  const { signOut } = useClerk();
+  const { user } = useUser();
   const { data } = useQuery({
     queryKey: ["services"],
     queryFn: fetchServices,
@@ -209,6 +205,7 @@ export default function HomePage() {
       title: "Departments",
       url: "#",
       icon: Building2,
+      isActive: true,
       items: slugs.map((slug: string) => ({
         title: serviceMeta[slug]?.label ?? slug.charAt(0).toUpperCase() + slug.slice(1),
         url: `/${slug}`,
@@ -218,11 +215,21 @@ export default function HomePage() {
 
   return (
     <AppLayout
-      breadcrumbs={[{ label: "Tasks" }, { label: "My Tasks" }]}
       navItems={navItems}
-      onSignOut={() => {}}
+      user={{
+        name: user?.fullName || "User",
+        email: user?.primaryEmailAddress?.emailAddress || "",
+        avatar: user?.imageUrl || "",
+      }}
+      onSignOut={() => signOut()}
     >
-      <MyTasksContent slugs={slugs} />
+      <AppPage
+        breadcrumbs={[{ label: "Tasks" }, { label: "My Tasks" }]}
+        title="My Tasks"
+        description="Tasks assigned to you across all departments"
+      >
+        <MyTasksInner slugs={slugs} />
+      </AppPage>
     </AppLayout>
   );
 }
