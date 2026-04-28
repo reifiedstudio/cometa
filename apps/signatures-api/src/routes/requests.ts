@@ -399,11 +399,12 @@ requestRoutes.post(
       return c.json({ error: "This email is already a signer on this request" }, 409);
     }
 
-    const { randomBytes } = await import("crypto");
+    const { randomBytes, randomUUID } = await import("crypto");
     const token = randomBytes(32).toString("hex");
     const [signer] = await db
       .insert(schema.signers)
       .values({
+        id: `signer_${randomUUID()}`,
         requestId,
         email: email.toLowerCase().trim(),
         token,

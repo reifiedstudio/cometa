@@ -8,18 +8,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const raw = readFileSync(join(__dirname, "../agent.yaml"), "utf-8");
 const config = parse(raw);
 
-const TASKS_MCP_URL =
-  process.env.TASKS_MCP_URL ??
-  "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws/mcp";
+function resolveEnv(value: string): string {
+  return value.replace(/\$\{([A-Z_][A-Z0-9_]*)(?::-([^}]*))?\}/g, (_, name, fallback) => {
+    return process.env[name] ?? fallback ?? "";
+  });
+}
 
 export const accounting: AgentDefinition = {
   slug: config.slug,
   name: config.name,
   model: config.model,
   system: config.system,
-  mcpServers: (config.mcp_servers ?? []).map((s: any) => ({
-    name: s.name,
-    url: s.url.replace(/\$\{TASKS_MCP_URL:-[^}]+\}/, TASKS_MCP_URL),
-  })),
+  mcpServers: (config.mcp_servers ?? [])
+    .map((s: any) => ({ name: s.name, url: resolveEnv(s.url) }))
+    .filter((s: { url: string }) => s.url.length > 0),
   metadata: config.metadata,
 };

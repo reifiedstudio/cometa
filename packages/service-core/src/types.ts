@@ -47,10 +47,14 @@ export interface Task {
   type: string;
   status: "open" | "in_progress" | "review" | "done";
   assignedTo?: string;
+  /** Email or service slug of who originally requested this task. Used by the My Requests view. */
+  requestedBy?: string;
   body: string;
   messages: string[];
   metadata?: Record<string, unknown>;
   sessionId?: string;
+  /** Set the first time an agent posts a meaningful action (e.g. log_activity) against this task. */
+  seenByAgent?: { sessionId?: string; at: string };
   createdAt: string;
   updatedAt: string;
 }

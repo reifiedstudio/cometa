@@ -23,6 +23,23 @@ async function deployAgent(def: AgentDefinition) {
     tools.push({
       type: "mcp_toolset",
       mcp_server_name: mcp.name,
+      default_config: { permission_policy: { type: "always_allow" } },
+    });
+  }
+
+  // Built-in agent toolset — disabled by default, opt-in per tool.
+  if (def.builtinTools && def.builtinTools.length > 0) {
+    tools.push({
+      type: "agent_toolset_20260401",
+      default_config: {
+        enabled: false,
+        permission_policy: { type: "always_allow" },
+      },
+      configs: def.builtinTools.map((name) => ({
+        name,
+        enabled: true,
+        permission_policy: { type: "always_allow" },
+      })),
     });
   }
 

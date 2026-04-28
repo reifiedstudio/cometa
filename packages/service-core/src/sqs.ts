@@ -23,8 +23,8 @@ export async function sendMessage(
   options: SendMessageOptions = {},
 ): Promise<ServiceMessage> {
   const message: ServiceMessage = {
-    id: randomUUID(),
-    traceId: options.traceId ?? randomUUID(),
+    id: `msg_${randomUUID()}`,
+    traceId: options.traceId ?? `trace_${randomUUID()}`,
     from,
     to,
     type: options.type ?? "task",

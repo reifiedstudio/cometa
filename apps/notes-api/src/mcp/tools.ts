@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { putNote, queryAllNotes, queryTasksByDepartment } from "@cometa/service-core";
+import { getNote, putNote, queryAllNotes, queryTasksByDepartment } from "@cometa/service-core";
 import { mdTaskSummary } from "@cometa/renderer/templates";
 import { storage } from "../lib/s3.js";
 import { sendNoteCreatedEmail } from "../lib/email.js";
@@ -48,7 +48,7 @@ Guidelines:
           "Raw markdown content with optional ```chart JSON blocks. Use this instead of template for custom notes.",
         ),
       params: z
-        .record(z.any())
+        .record(z.string(), z.any())
         .optional()
         .describe(
           "Template-specific parameters. tasks: {department, status}.",
@@ -100,8 +100,8 @@ Guidelines:
         }
 
         const noteTitle = title ?? defaultTitle;
-        const slug = template ?? "note";
-        const id = `${slug}-${Date.now()}`;
+        // Prefixed at source — `note_` is the canonical ID prefix for notes.
+        const id = `note_${template ? `${template}_` : ""}${Date.now()}`;
         const filename = `${id}.md`;
 
         await storage.upload(
@@ -180,6 +180,65 @@ Guidelines:
           isError: true,
         };
       }
+    },
+  );
+
+  server.tool(
+    "get_note",
+    "Fetch a note by ID. Returns the note's metadata, the full markdown content, and a short-lived presigned URL to the underlying file in S3 so an agent or model can read it directly.",
+    {
+      id: z.string().describe("Note ID (e.g. note_<id>)"),
+    },
+    async ({ id }) => {
+      const note = await getNote(id);
+      if (!note) {
+        return {
+          content: [{ type: "text" as const, text: "Note not found." }],
+          isError: true,
+        };
+      }
+
+      let markdown: string | undefined;
+      try {
+        const buf = await storage.getBuffer(note.s3Key);
+        markdown = buf?.buffer.toString("utf-8");
+      } catch (err) {
+        console.error("[get_note] Failed to read S3 object:", err);
+      }
+
+      let presignedUrl: string | undefined;
+      try {
+        presignedUrl = await storage.getSignedUrl(note.s3Key, 300);
+      } catch (err) {
+        console.error("[get_note] Failed to sign URL:", err);
+      }
+
+      const url = `https://${NOTES_DOMAIN}/view/${note.id}`;
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                id: note.id,
+                title: note.title,
+                snippet: note.snippet,
+                template: note.template,
+                starred: note.starred,
+                createdAt: note.createdAt,
+                updatedAt: note.updatedAt,
+                viewUrl: url,
+                presignedUrl,
+                contentType: "text/markdown; charset=utf-8",
+                markdown,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
     },
   );
 

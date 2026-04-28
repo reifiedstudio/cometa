@@ -1,0 +1,10 @@
+import postgres from "postgres";
+const sql = postgres(process.env.DATABASE_URL!, { ssl: "require" });
+await sql.unsafe(`DROP TYPE IF EXISTS document_source CASCADE`);
+await sql.unsafe(`DROP TYPE IF EXISTS document_status CASCADE`);
+await sql.unsafe(`DROP TYPE IF EXISTS document_type CASCADE`);
+await sql.unsafe(`DROP TYPE IF EXISTS signature_request_status CASCADE`);
+await sql.unsafe(`DROP TYPE IF EXISTS signer_status CASCADE`);
+await sql.unsafe(`DROP TABLE IF EXISTS drizzle.__drizzle_migrations CASCADE`);
+console.log("enums dropped");
+await sql.end({ timeout: 5 });

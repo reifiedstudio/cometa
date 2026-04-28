@@ -1,7 +1,9 @@
-import { getEffectivePermissions } from "@cometa/auth";
+import { getEffectivePermissions, requireClerkAuth } from "@cometa/auth";
 import { createMiddleware } from "hono/factory";
 import { verifyAccessToken } from "../auth/store.js";
 import type { GatewayEnv } from "../lib/types.js";
+
+requireClerkAuth();
 
 /**
  * Auth middleware for REST API routes.

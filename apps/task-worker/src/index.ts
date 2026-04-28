@@ -1,20 +1,18 @@
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { processMessage, updateMessageStatus } from "@cometa/service-core";
-import type { ServiceConfig, ServiceMessage } from "@cometa/service-core";
+import { processMessage, processTask, updateMessageStatus } from "@cometa/service-core";
+import type { ServiceConfig, ServiceMessage, Task } from "@cometa/service-core";
 /**
  * Task Worker Lambda
  *
- * Triggered by SQS queues (one per task).
- * Each SQS message body is a DynamoDB NewImage (from the stream router).
- * Unmarshalls it to a ServiceMessage, then starts a managed agent session.
+ * Triggered by SQS queues (one per department).
+ * Each SQS message body is a DynamoDB NewImage written by stream-router.
+ * Two payload shapes arrive:
+ *   - Task   — fresh task created in DDB, agent runs triage if assignedTo is "agent" or empty
+ *   - Message — reply in a task thread or new request, runs through processMessage
  */
 import type { SQSBatchItemFailure, SQSBatchResponse, SQSEvent } from "aws-lambda";
 
-/**
- * Map task slugs to their ServiceConfig.
- * The agent's system prompt lives in Anthropic now, so guidance is minimal here.
- */
 const configs: Record<string, ServiceConfig> = {
   accounting: {
     name: "accounting",
@@ -26,38 +24,57 @@ const configs: Record<string, ServiceConfig> = {
   },
 };
 
+function isTask(item: Record<string, unknown>): item is Task {
+  return typeof (item as { department?: unknown }).department === "string"
+    && typeof (item as { body?: unknown }).body === "string"
+    && Array.isArray((item as { messages?: unknown }).messages);
+}
+
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const failures: SQSBatchItemFailure[] = [];
 
   for (const record of event.Records) {
     try {
-      // The stream router sends the DynamoDB NewImage as the message body
       const dynamoImage = JSON.parse(record.body) as Record<string, AttributeValue>;
-      const item = unmarshall(dynamoImage) as ServiceMessage;
+      const item = unmarshall(dynamoImage) as Record<string, unknown>;
 
-      const config = configs[item.to];
-      if (!config) {
-        console.error(`No config for task: ${item.to}`);
-        // Don't retry — this message can't be processed
+      if (isTask(item)) {
+        const task = item as unknown as Task;
+        const result = await processTask(task);
+        if (result.skipped) {
+          console.log(`Skipped task ${task.id} (${result.skipped})`);
+        } else {
+          console.log(`Started session ${result.sessionId} for task ${task.id} (${task.department})`);
+        }
         continue;
       }
 
-      await updateMessageStatus(item.id, "processing");
+      const message = item as unknown as ServiceMessage;
+      const config = configs[message.to];
+      if (!config) {
+        console.error(`No config for department: ${message.to}`);
+        continue;
+      }
 
-      const { sessionId, taskId } = await processMessage(item, config);
-      console.log(`Started session ${sessionId} for task ${taskId} (${item.to})`);
+      await updateMessageStatus(message.id, "processing");
 
-      await updateMessageStatus(item.id, "completed");
+      const result = await processMessage(message, config);
+      if (result.skipped) {
+        console.log(`Skipped message ${message.id} on task ${result.taskId} (${result.skipped})`);
+      } else {
+        console.log(`Started session ${result.sessionId} for task ${result.taskId} (${message.to})`);
+      }
+
+      await updateMessageStatus(message.id, "completed");
     } catch (err) {
-      console.error("Failed to process message", record.messageId, err);
+      console.error("Failed to process record", record.messageId, err);
 
-      // Try to mark the message as failed in DynamoDB
       try {
         const parsed = JSON.parse(record.body);
-        const item = unmarshall(parsed);
-        if (item.id) {
+        const item = unmarshall(parsed) as Record<string, unknown>;
+        if (!isTask(item) && typeof item.id === "string") {
           const error = err instanceof Error ? err.message : String(err);
-          await updateMessageStatus(item.id as string, "failed", error);
+          await updateMessageStatus(item.id, "failed", error);
         }
       } catch {
         // couldn't parse — skip status update

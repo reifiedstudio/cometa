@@ -65,7 +65,7 @@ export const signerStatusEnum = pgEnum("signer_status", [
 ]);
 
 export const documents = pgTable("documents", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
 
   // File info
   originalName: text("original_name").notNull(),
@@ -119,7 +119,7 @@ export const documents = pgTable("documents", {
 
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
+  documentId: text("document_id")
     .notNull()
     .references(() => documents.id),
   action: varchar("action", { length: 64 }).notNull(),
@@ -136,7 +136,7 @@ export const auditLogs = pgTable("audit_logs", {
 export const signaturesSchema = pgSchema("signatures");
 
 export const signatureRequests = signaturesSchema.table("signature_requests", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   sourceRef: text("source_ref"), // informational reference (e.g. document ID), not a FK
   status: signatureRequestStatusEnum("status").default("pending").notNull(),
   message: text("message"),
@@ -150,8 +150,8 @@ export const signatureRequests = signaturesSchema.table("signature_requests", {
 });
 
 export const signers = signaturesSchema.table("signers", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  requestId: uuid("request_id")
+  id: text("id").primaryKey(),
+  requestId: text("request_id")
     .notNull()
     .references(() => signatureRequests.id),
   email: text("email").notNull(),
@@ -173,8 +173,8 @@ export const signers = signaturesSchema.table("signers", {
 });
 
 export const signatureFiles = signaturesSchema.table("signature_files", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  requestId: uuid("request_id")
+  id: text("id").primaryKey(),
+  requestId: text("request_id")
     .notNull()
     .references(() => signatureRequests.id),
   s3Key: text("s3_key").notNull(),

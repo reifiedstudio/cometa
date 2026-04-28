@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { db, schema } from "@cometa/db";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -48,10 +49,11 @@ uploadRoutes.post(
     const s3Key = `documents/${timestamp}-${file.name}`;
     const s3Url = await uploadFile(s3Key, buffer, file.type);
 
-    // Create document record
+    // Create document record — `doc_` prefix is the canonical ID format.
     const [document] = await db
       .insert(schema.documents)
       .values({
+        id: `doc_${randomUUID()}`,
         originalName: file.name,
         mimeType: file.type,
         sizeBytes: buffer.length,

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { db, schema } from "@cometa/db";
 import { and, desc, eq, ne } from "drizzle-orm";
 
@@ -32,6 +33,7 @@ export async function createSignatureRequest(params: {
   const [request] = await db
     .insert(schema.signatureRequests)
     .values({
+      id: `sig_${randomUUID()}`,
       sourceRef: params.sourceRef,
       message: params.message,
       requestedBy: params.requestedBy,
@@ -44,6 +46,7 @@ export async function createSignatureRequest(params: {
   // Store file reference if provided
   if (params.fileKey && params.fileBucket) {
     await db.insert(schema.signatureFiles).values({
+      id: `sigfile_${randomUUID()}`,
       requestId: request.id,
       s3Key: params.fileKey,
       s3Bucket: params.fileBucket,
@@ -55,6 +58,7 @@ export async function createSignatureRequest(params: {
 
   // Create signers
   const signerValues = params.signerEmails.map((email, i) => ({
+    id: `signer_${randomUUID()}`,
     requestId: request.id,
     email: email.toLowerCase().trim(),
     token: generateToken(),

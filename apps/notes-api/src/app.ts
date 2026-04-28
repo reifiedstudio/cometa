@@ -1,4 +1,4 @@
-import { extractMcpTools } from "@cometa/shared";
+import { extractMcpTools, mcpAuthMiddleware } from "@cometa/shared";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { apiReference } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
@@ -55,13 +55,17 @@ export function createApp(): Hono<NotesEnv> {
     }),
   );
 
+  // MCP routes — bearer-token auth shared between Lambda env and Anthropic agent definition
+  app.use("/mcp", mcpAuthMiddleware);
+  app.use("/mcp/tools", mcpAuthMiddleware);
+
   // MCP tool catalog for gateway discovery
   app.get("/mcp/tools", (c) => {
     const mcpServer = createMcpServer();
     return c.json(extractMcpTools(mcpServer));
   });
 
-  // MCP endpoint (no auth — gateway handles auth)
+  // MCP endpoint
   app.all("/mcp", async (c) => {
     const mcpServer = createMcpServer();
     const transport = new StreamableHTTPTransport();

@@ -4,8 +4,10 @@ import { AgentStream } from "@/components/agent-stream";
 import { AssignPicker } from "@/components/assign-picker";
 import { LinkPreviews } from "@/components/link-preview";
 import { fetchMessages, fetchServices, fetchTask, getSessionStatus, performAction, updateTask as updateTaskApi } from "@/lib/api";
+import { listAgentSlugs } from "@/lib/agents";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/clerk-react";
+import { MarkdownRenderer } from "@cometa/renderer";
 import { AppLayout } from "@cometa/ui/app-layout";
 import { AppPage } from "@cometa/ui/app-page";
 import { DetailPanel } from "@cometa/ui/detail-panel";
@@ -22,6 +24,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  Inbox,
   ListTodo,
   Loader2,
   MessageSquare,
@@ -158,8 +161,12 @@ export default function TaskDetailPage() {
     ? servicesData.services.map((s: any) => s.slug)
     : ["accounting", "legal"];
 
+  const knownAgentSlugs = listAgentSlugs();
+  const agentSlugs = slugs.filter((s: string) => knownAgentSlugs.includes(s));
+
   const navItems = [
     { title: "My Tasks", url: "/", icon: ListTodo },
+    { title: "My Requests", url: "/requests", icon: Inbox },
     {
       title: "Departments",
       url: "#",
@@ -168,6 +175,16 @@ export default function TaskDetailPage() {
       items: slugs.map((s: string) => ({
         title: serviceMeta[s]?.label ?? s,
         url: `/${s}`,
+      })),
+    },
+    {
+      title: "Agents",
+      url: "#",
+      icon: Bot,
+      isActive: true,
+      items: agentSlugs.map((s: string) => ({
+        title: `${serviceMeta[s]?.label ?? s.charAt(0).toUpperCase() + s.slice(1)} Agent`,
+        url: `/agents/${s}`,
       })),
     },
   ];
@@ -391,9 +408,12 @@ export default function TaskDetailPage() {
                                 </Badge>
                               </div>
 
-                              <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                                {linkify(msg.body)}
-                              </p>
+                              {msg.body ? (
+                                <MarkdownRenderer
+                                  content={msg.body}
+                                  className="text-sm text-foreground/80"
+                                />
+                              ) : null}
 
                               {/* Document reference */}
                               {msg.type === "document" && data.documentName && (

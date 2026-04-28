@@ -1,3 +1,5 @@
+import { extractMcpTools, mcpAuthMiddleware } from "@cometa/shared";
+import { StreamableHTTPTransport } from "@hono/mcp";
 import { apiReference } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 import { openAPISpecs } from "hono-openapi";
@@ -5,6 +7,7 @@ import { cors } from "hono/cors";
 import { cleanupTrashedDocuments } from "./lib/cleanup.js";
 import { seedDefaultDocumentTypes } from "./lib/seed-document-types.js";
 import type { DocumentsEnv } from "./lib/types.js";
+import { createMcpServer } from "./mcp/server.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { documentTypeRoutes } from "./routes/document-types.js";
 import { documentRoutes } from "./routes/documents.js";
@@ -21,7 +24,8 @@ export function createApp(): Hono<DocumentsEnv> {
     cors({
       origin: (origin) => origin,
       allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-      allowHeaders: ["Content-Type", "Authorization"],
+      allowHeaders: ["Content-Type", "Authorization", "Mcp-Session-Id"],
+      exposeHeaders: ["Mcp-Session-Id"],
     }),
   );
 
@@ -56,6 +60,30 @@ export function createApp(): Hono<DocumentsEnv> {
       spec: { url: "/openapi" },
     }),
   );
+
+  // MCP routes — bearer-token auth shared between Lambda env and Anthropic agent definition
+  app.use("/mcp", mcpAuthMiddleware);
+  app.use("/mcp/tools", mcpAuthMiddleware);
+
+  // MCP tool catalog for gateway discovery
+  app.get("/mcp/tools", (c) => {
+    const mcpServer = createMcpServer();
+    return c.json(extractMcpTools(mcpServer));
+  });
+
+  // MCP endpoint
+  app.all("/mcp", async (c) => {
+    const mcpServer = createMcpServer();
+    const transport = new StreamableHTTPTransport();
+    await mcpServer.connect(transport);
+
+    const response = await transport.handleRequest(c);
+    if (response) {
+      return response;
+    }
+
+    return c.json({ error: "MCP request failed" }, 500);
+  });
 
   // Authenticated API routes
   app.use("/api/*", authMiddleware);

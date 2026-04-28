@@ -1,6 +1,8 @@
-import { getEffectivePermissions } from "@cometa/auth";
+import { getEffectivePermissions, requireClerkAuth } from "@cometa/auth";
 import { createMiddleware } from "hono/factory";
 import type { NotesEnv } from "../lib/types.js";
+
+requireClerkAuth();
 
 export const authMiddleware = createMiddleware<NotesEnv>(async (c, next) => {
   const authHeader = c.req.header("Authorization");

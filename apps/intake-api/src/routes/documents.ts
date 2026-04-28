@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { logAudit } from "../lib/audit.js";
 import { pushToProcessingQueue } from "../lib/queue.js";
+import { getPresignedUrl } from "../lib/s3.js";
 import type { DocumentsEnv } from "../lib/types.js";
 
 // Lazy-init image service (env vars may not be set at import time)
@@ -207,7 +208,16 @@ documentRoutes.get(
       return c.json({ error: "Document not found" }, 404);
     }
 
-    return c.json(addPreviewUrl(document));
+    let presignedUrl: string | undefined;
+    if (document.s3Key) {
+      try {
+        presignedUrl = await getPresignedUrl(document.s3Key, 300);
+      } catch (err) {
+        console.error("[get document] failed to sign URL:", err);
+      }
+    }
+
+    return c.json({ ...addPreviewUrl(document), presignedUrl });
   },
 );
 

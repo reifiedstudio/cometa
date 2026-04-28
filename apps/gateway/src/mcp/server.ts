@@ -30,6 +30,7 @@ const TASKS_MCP_URL =
   process.env["TASKS_MCP_URL"] ??
   "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws/mcp";
 
+const INTAKE_MCP_URL = process.env["INTAKE_MCP_URL"] ?? "";
 const SIGNATURES_MCP_URL = process.env["SIGNATURES_MCP_URL"] ?? "";
 const UTILITIES_MCP_URL = process.env["UTILITIES_MCP_URL"] ?? "";
 const NOTES_MCP_URL = process.env["NOTES_MCP_URL"] ?? "";
@@ -56,7 +57,9 @@ Use the Cometa tools whenever the user asks about:
 When the user says "my documents", "my invoices", etc., always use the Cometa tools — never try to access local files.
 To send work to a department (e.g. "review this invoice"), use send_message — the department's AI agent will handle it.
 
-SIGNATURES: Use the signature tools (get_signature_status, list_signature_requests, nudge_signer, cancel_signature_request) to check signing progress, nudge signers, or cancel requests. Signature requests with documents must be created through the Signatures UI — direct the user to the signatures app to upload and send documents for signing.
+SIGNATURES — creating a signature request is a deliberate UI-only action. If the user asks to send a document for signing, **do not attempt to call any tool**. Direct them to https://sign.daniellourie.me — upload the PDF there and add signers. Never invent tool names like \`request_signature\` / \`send_for_signing\` / \`create_signing_request\` — they do not exist by design. The signature MCP tools (\`get_signature_status\`, \`get_signed_document\`, \`list_signature_requests\`, \`nudge_signer\`, \`cancel_signature_request\`) are for working with existing requests only.
+
+DEPARTMENT WORK — to ask a department's agent to do something (verify, summarise, review, triage), prefer \`send_message\` over \`create_task\`. Both end up at the same agent now (every new task is auto-triaged), but \`send_message\` is the natural verb for "ask the legal/accounting team to do X". Use \`create_task\` only when scheduling structured work with a specific type field.
 
 NOTES: Use the create_note tool when the user asks to see, show, or share reports and summaries. It generates a shareable link to a styled page with markdown tables and Mermaid charts. Notes can be downloaded or printed to PDF. They expire after 30 days. Pass raw markdown content with chart blocks. Always prefer create_note over inline text for reports — notes are shareable and look professional.
 
@@ -85,13 +88,41 @@ UTILITIES: Use the utilities tools for document generation and PDF conversion:
         description: t.description ?? "",
         inputSchema: t.inputSchema ?? { type: "object", properties: {} },
         handler: async (args) => {
-          const result = await callUpstreamTool(TASKS_MCP_URL, t.name, args);
+          // For task-creating tools, attribute the request to the calling user so
+          // it shows up in their My Requests view.
+          const isRequestingTool = t.name === "send_message" || t.name === "create_task";
+          const enriched =
+            isRequestingTool && user?.email
+              ? { ...args, requestedBy: (args as any).requestedBy ?? user.email }
+              : args;
+          const result = await callUpstreamTool(TASKS_MCP_URL, t.name, enriched);
           return result as any;
         },
       });
     }
   } catch (err) {
     console.warn("[proxy] Failed to discover tasks tools:", err);
+  }
+
+  // Discover upstream tools from intake service
+  if (INTAKE_MCP_URL) {
+    try {
+      const upstream = await getUpstreamTools(INTAKE_MCP_URL);
+      console.log(`[proxy] Discovered ${upstream.length} tools from intake`);
+      for (const t of upstream) {
+        toolMap.set(t.name, {
+          name: t.name,
+          description: t.description ?? "",
+          inputSchema: t.inputSchema ?? { type: "object", properties: {} },
+          handler: async (args) => {
+            const result = await callUpstreamTool(INTAKE_MCP_URL, t.name, args);
+            return result as any;
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[proxy] Failed to discover intake tools:", err);
+    }
   }
 
   // Discover upstream tools from signatures service

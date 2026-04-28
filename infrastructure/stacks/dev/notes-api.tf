@@ -26,6 +26,7 @@ module "notes_api_lambda" {
     CLERK_SECRET_KEY = var.clerk_secret_key
     RESEND_API_KEY   = var.resend_api_key
     EMAIL_FROM       = var.email_from
+    MCP_AUTH_TOKEN   = var.mcp_auth_token
   }
 
   inline_policy_json = jsonencode({

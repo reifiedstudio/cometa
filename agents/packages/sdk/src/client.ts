@@ -45,6 +45,18 @@ export async function getEnvironmentId(): Promise<string> {
   return getParam(`${SSM_PREFIX}/environment-id`);
 }
 
+/**
+ * Get the shared vault ID — holds static-bearer credentials Anthropic injects
+ * into MCP server callbacks. Returns undefined if no vault has been bootstrapped.
+ */
+export async function getVaultId(): Promise<string | undefined> {
+  try {
+    return await getParam(`${SSM_PREFIX}/vault-id`);
+  } catch {
+    return undefined;
+  }
+}
+
 export interface StartSessionOptions {
   /** Task slug (e.g. 'accounting') */
   slug: string;
@@ -66,9 +78,10 @@ export interface SessionInfo {
  * Returns immediately — the agent runs on Anthropic's infrastructure.
  */
 export async function startSession(options: StartSessionOptions): Promise<SessionInfo> {
-  const [agentId, environmentId] = await Promise.all([
+  const [agentId, environmentId, vaultId] = await Promise.all([
     getAgentId(options.slug),
     getEnvironmentId(),
+    getVaultId(),
   ]);
 
   // Create session
@@ -76,6 +89,7 @@ export async function startSession(options: StartSessionOptions): Promise<Sessio
     agent: agentId,
     environment_id: environmentId,
     title: options.title ?? `${options.slug}: ${options.message.slice(0, 80)}`,
+    ...(vaultId ? { vault_ids: [vaultId] } : {}),
   });
 
   // Send initial user message (fire and forget — agent starts running)

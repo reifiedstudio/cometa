@@ -30,12 +30,14 @@ module "gateway_lambda" {
     AUTH_TABLE         = module.auth_table.name
     S3_PREFIX          = "intake/"
     INTAKE_API_URL     = module.intake_api_lambda.function_url
+    INTAKE_MCP_URL     = "${module.intake_api_lambda.function_url}mcp"
     SIGNATURES_API_URL = module.signatures_lambda.function_url
     SIGNATURES_MCP_URL = "${module.signatures_lambda.function_url}mcp"
     UTILITIES_API_URL  = module.utilities_lambda.function_url
     UTILITIES_MCP_URL  = "${module.utilities_lambda.function_url}mcp"
     NOTES_API_URL      = module.notes_api_lambda.function_url
     NOTES_MCP_URL      = "${module.notes_api_lambda.function_url}mcp"
+    MCP_AUTH_TOKEN     = var.mcp_auth_token
   })
 
   inline_policy_json = jsonencode({

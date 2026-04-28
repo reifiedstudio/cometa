@@ -85,6 +85,13 @@ variable "anthropic_api_key" {
   default     = ""
 }
 
+variable "mcp_auth_token" {
+  description = "Shared bearer token between MCP-bearing Lambdas and Anthropic-managed agents (Authorization: Bearer ...)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "tasks_domain" {
   description = "Custom domain for the tasks frontend"
   type        = string

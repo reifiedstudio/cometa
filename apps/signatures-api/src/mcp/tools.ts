@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { sendSigningInvite } from "../lib/email.js";
+import { getPresignedUrl } from "../lib/s3.js";
 import {
   getSignatureRequest,
   getSignatureRequestBySourceRef,
@@ -12,8 +13,8 @@ export function registerSignatureTools(server: McpServer): void {
     "get_signature_status",
     "Check status of a signature request — who signed, who hasn't.",
     {
-      requestId: z.string().optional().describe("Signature request ID"),
-      sourceRef: z.string().optional().describe("Source reference (e.g. document ID)"),
+      requestId: z.string().optional().describe("Signature request ID (e.g. sig_<uuid>)"),
+      sourceRef: z.string().optional().describe("Source reference, e.g. doc_<uuid>"),
     },
     async ({ requestId, sourceRef }) => {
       let result;
@@ -41,15 +42,90 @@ export function registerSignatureTools(server: McpServer): void {
             type: "text" as const,
             text: JSON.stringify(
               {
+                requestId: result.request.id,
                 status: result.request.status,
                 createdAt: result.request.createdAt,
                 expiresAt: result.request.expiresAt,
                 signers: result.signers.map((s) => ({
+                  id: s.id,
                   email: s.email,
                   name: s.name,
                   status: s.status,
                   signedAt: s.signedAt,
                 })),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "get_signed_document",
+    "Fetch the document(s) attached to a signature request, with a short-lived presigned URL the agent can read directly. Use after a signature request is created or completed to retrieve the (signed) PDF and its signing audit trail.",
+    {
+      requestId: z.string().optional().describe("Signature request ID (e.g. sig_<uuid>)"),
+      sourceRef: z.string().optional().describe("Source reference, e.g. doc_<uuid>"),
+    },
+    async ({ requestId, sourceRef }) => {
+      let result;
+      if (requestId) {
+        result = await getSignatureRequest(requestId);
+      } else if (sourceRef) {
+        result = await getSignatureRequestBySourceRef(sourceRef);
+      } else {
+        return {
+          content: [{ type: "text" as const, text: "Provide either requestId or sourceRef." }],
+          isError: true,
+        };
+      }
+
+      if (!result) {
+        return {
+          content: [{ type: "text" as const, text: "No signature request found." }],
+          isError: true,
+        };
+      }
+
+      const files = await Promise.all(
+        result.files.map(async (f) => {
+          let presignedUrl: string | undefined;
+          try {
+            presignedUrl = await getPresignedUrl(f.s3Key, 300);
+          } catch (err) {
+            console.error("[get_signed_document] Failed to sign URL:", err);
+          }
+          return {
+            id: f.id,
+            originalName: f.originalName,
+            mimeType: f.mimeType,
+            sizeBytes: f.sizeBytes,
+            presignedUrl,
+          };
+        }),
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                requestId: result.request.id,
+                status: result.request.status,
+                createdAt: result.request.createdAt,
+                expiresAt: result.request.expiresAt,
+                signers: result.signers.map((s) => ({
+                  id: s.id,
+                  email: s.email,
+                  name: s.name,
+                  status: s.status,
+                  signedAt: s.signedAt,
+                })),
+                files,
               },
               null,
               2,
@@ -87,7 +163,7 @@ export function registerSignatureTools(server: McpServer): void {
     "nudge_signer",
     "Resend signing email to a signer.",
     {
-      signerId: z.string().describe("Signer ID to nudge"),
+      signerId: z.string().describe("Signer ID to nudge (e.g. signer_<uuid>)"),
     },
     async ({ signerId }) => {
       const { db, schema } = await import("@cometa/db");
@@ -139,7 +215,7 @@ export function registerSignatureTools(server: McpServer): void {
     "cancel_signature_request",
     "Cancel a pending signature request.",
     {
-      requestId: z.string().describe("Signature request ID to cancel"),
+      requestId: z.string().describe("Signature request ID to cancel (e.g. sig_<uuid>)"),
     },
     async ({ requestId }) => {
       const { db, schema } = await import("@cometa/db");
@@ -154,7 +230,9 @@ export function registerSignatureTools(server: McpServer): void {
       if (!updated)
         return { content: [{ type: "text" as const, text: "Request not found." }], isError: true };
       return {
-        content: [{ type: "text" as const, text: `Signature request ${requestId} cancelled.` }],
+        content: [
+          { type: "text" as const, text: `Signature request ${updated.id} cancelled.` },
+        ],
       };
     },
   );

@@ -2,6 +2,10 @@
  * MCP Proxy — discovers tools from upstream MCP servers via their
  * /mcp/tools REST endpoint and forwards tool calls via raw JSON-RPC.
  * Cached in-memory so warm Lambda invocations skip the discovery round-trip.
+ *
+ * Upstream MCP routes are protected by a shared bearer token (`MCP_AUTH_TOKEN`).
+ * The gateway lives in the same trust zone as the upstream Lambdas, so it just
+ * forwards the same token on every call.
  */
 
 export interface UpstreamTool {
@@ -15,19 +19,22 @@ interface ToolCache {
   fetchedAt: number;
 }
 
-// Module-scoped cache per URL — survives across warm Lambda invocations
 const cacheMap = new Map<string, ToolCache>();
-const CACHE_TTL = 5 * 60_000; // 5 minutes
+const CACHE_TTL = 5 * 60_000;
 
-// Expose last proxy error so /mcp/tools can surface it
 let lastProxyError: { url: string; message: string; timestamp: string } | undefined;
 export function getProxyStatus() {
   return lastProxyError;
 }
 
+function authHeaders(): Record<string, string> {
+  const token = process.env["MCP_AUTH_TOKEN"];
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function fetchTools(url: string): Promise<UpstreamTool[]> {
   const catalogUrl = url.replace(/\/mcp\/?$/, "/mcp/tools");
-  const res = await fetch(catalogUrl);
+  const res = await fetch(catalogUrl, { headers: authHeaders() });
   if (!res.ok) {
     throw new Error(`Upstream tool catalog returned ${res.status}: ${await res.text()}`);
   }
@@ -56,12 +63,14 @@ export async function getUpstreamTools(url: string): Promise<UpstreamTool[]> {
  * Forward a tool call to the upstream MCP server via raw JSON-RPC.
  */
 export async function callUpstreamTool(url: string, name: string, args: Record<string, unknown>) {
-  // Step 1: Initialize to get a session
+  const auth = authHeaders();
+
   const initRes = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json, text/event-stream",
+      ...auth,
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -83,10 +92,10 @@ export async function callUpstreamTool(url: string, name: string, args: Record<s
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json, text/event-stream",
+    ...auth,
   };
   if (sessionId) headers["Mcp-Session-Id"] = sessionId;
 
-  // Step 2: Send initialized notification
   await fetch(url, {
     method: "POST",
     headers,
@@ -96,7 +105,6 @@ export async function callUpstreamTool(url: string, name: string, args: Record<s
     }),
   });
 
-  // Step 3: Call the tool
   const toolRes = await fetch(url, {
     method: "POST",
     headers,

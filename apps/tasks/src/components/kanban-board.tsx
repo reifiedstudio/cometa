@@ -90,7 +90,7 @@ function SortableCard({
   slug: string;
   onAssign: (taskId: string, email: string) => void;
 }) {
-  const { ref, status } = useSortable({
+  const { ref, isDragging } = useSortable({
     id: task.id,
     index,
     group: stageKey,
@@ -99,7 +99,7 @@ function SortableCard({
   const [showPicker, setShowPicker] = useState(false);
 
   return (
-    <div ref={ref} style={{ opacity: status === "dragging" ? 0.5 : 1 }}>
+    <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
       <div
         onClick={() => window.location.href = `/${task._slug ?? slug}/tasks/${task.id}`}
         className="block rounded-lg border bg-card p-3 hover:border-foreground/20 transition-colors space-y-2 cursor-pointer"

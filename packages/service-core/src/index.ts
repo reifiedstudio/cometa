@@ -1,5 +1,5 @@
 export { createServiceInbox } from "./inbox.js";
-export { processMessage } from "./runner.js";
+export { processMessage, processTask } from "./runner.js";
 export {
   putMessage,
   getMessage,

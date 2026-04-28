@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchServices, fetchTasks } from "@/lib/api";
+import { listAgentSlugs } from "@/lib/agents";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { KanbanBoard } from "@/components/kanban-board";
@@ -11,9 +12,12 @@ import { FilterTabs } from "@cometa/ui/filter-tabs";
 import { useQuery } from "@tanstack/react-query";
 import {
   ListTodo,
+  Bot,
   Building2,
   Clock,
   Columns3,
+  Eye,
+  Inbox,
   LayoutList,
   Loader2,
   AlertTriangle,
@@ -170,10 +174,18 @@ function MyTasksContent({ slugs }: { slugs: string[] }) {
                 </div>
                 {/* Footer */}
                 <div className="px-4 py-2 bg-muted/30 border-t flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Clock size={11} />
-                    {formatDateTime(task.createdAt)}
-                  </span>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={11} />
+                      {formatDateTime(task.createdAt)}
+                    </span>
+                    {task.seenByAgent && (
+                      <span className="flex items-center gap-1 text-emerald-700">
+                        <Eye size={11} />
+                        Seen by agent · {formatDateTime(task.seenByAgent.at)}
+                      </span>
+                    )}
+                  </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </div>
               </a>
@@ -199,8 +211,12 @@ export default function HomePage() {
     ? data.services.map((s: any) => s.slug)
     : ["accounting", "legal"];
 
+  const knownAgentSlugs = listAgentSlugs();
+  const agentSlugs = slugs.filter((s: string) => knownAgentSlugs.includes(s));
+
   const navItems = [
     { title: "My Tasks", url: "/", icon: ListTodo, isActive: true },
+    { title: "My Requests", url: "/requests", icon: Inbox },
     {
       title: "Departments",
       url: "#",
@@ -209,6 +225,16 @@ export default function HomePage() {
       items: slugs.map((slug: string) => ({
         title: serviceMeta[slug]?.label ?? slug.charAt(0).toUpperCase() + slug.slice(1),
         url: `/${slug}`,
+      })),
+    },
+    {
+      title: "Agents",
+      url: "#",
+      icon: Bot,
+      isActive: true,
+      items: agentSlugs.map((slug: string) => ({
+        title: `${serviceMeta[slug]?.label ?? slug.charAt(0).toUpperCase() + slug.slice(1)} Agent`,
+        url: `/agents/${slug}`,
       })),
     },
   ];

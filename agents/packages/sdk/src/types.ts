@@ -16,11 +16,23 @@ export interface AgentDefinition {
   system: string;
   /** MCP servers this agent connects to */
   mcpServers?: McpServerRef[];
+  /** Built-in agent toolset names to enable (e.g. "web_fetch", "web_search"). Everything else stays disabled. */
+  builtinTools?: BuiltinToolName[];
   /** Custom skills (uploaded .md files) */
   skills?: SkillDefinition[];
   /** Metadata attached to the agent */
   metadata?: Record<string, string>;
 }
+
+export type BuiltinToolName =
+  | "bash"
+  | "edit"
+  | "read"
+  | "write"
+  | "glob"
+  | "grep"
+  | "web_fetch"
+  | "web_search";
 
 export interface SkillDefinition {
   /** Skill name */

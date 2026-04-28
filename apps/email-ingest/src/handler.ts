@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { db, schema } from "@cometa/db";
 import type { ProcessingMessage } from "@cometa/shared";
@@ -70,6 +71,7 @@ export async function handler(event: SESEvent) {
         const [document] = await db
           .insert(schema.documents)
           .values({
+            id: `doc_${randomUUID()}`,
             originalName: filename,
             mimeType: contentType,
             sizeBytes: buffer.length,

@@ -267,6 +267,7 @@ module "intake_api_lambda" {
     IMAGES_DOMAIN      = var.images_domain
     IMAGES_KEYPAIR_ID  = aws_cloudfront_public_key.images.id
     IMAGES_PRIVATE_KEY = tls_private_key.images.private_key_pem
+    MCP_AUTH_TOKEN     = var.mcp_auth_token
   })
 
   inline_policy_json = jsonencode({
@@ -422,6 +423,7 @@ module "signatures_lambda" {
     PDF_CONVERTER_URL     = module.pdf_converter_lambda.function_url
     UTILITIES_BUCKET      = module.notes_content_bucket.bucket_id
     SIGNATURES_APP_URL    = "https://${var.signatures_domain}"
+    MCP_AUTH_TOKEN        = var.mcp_auth_token
   })
 
   inline_policy_json = jsonencode({
@@ -479,12 +481,11 @@ module "tasks_api_lambda" {
   memory_mb       = 512
   timeout_seconds = 30
 
-  environment = {
-    NODE_ENV          = var.environment
-    DYNAMODB_TABLE    = module.services_table.name
-    ANTHROPIC_API_KEY = var.anthropic_api_key
-    NAME_PREFIX       = local.name_prefix
-  }
+  environment = merge(local.tasks_api_secrets, {
+    NODE_ENV       = var.environment
+    DYNAMODB_TABLE = module.services_table.name
+    NAME_PREFIX    = local.name_prefix
+  })
 
   inline_policy_json = jsonencode({
     Version = "2012-10-17"
@@ -608,12 +609,11 @@ module "task_worker_lambda" {
   memory_mb       = 512
   timeout_seconds = 120
 
-  environment = {
-    NODE_ENV          = var.environment
-    DYNAMODB_TABLE    = module.services_table.name
-    ANTHROPIC_API_KEY = var.anthropic_api_key
-    NAME_PREFIX       = local.name_prefix
-  }
+  environment = merge(local.task_worker_secrets, {
+    NODE_ENV       = var.environment
+    DYNAMODB_TABLE = module.services_table.name
+    NAME_PREFIX    = local.name_prefix
+  })
 
   inline_policy_json = jsonencode({
     Version = "2012-10-17"

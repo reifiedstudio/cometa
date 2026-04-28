@@ -1,6 +1,10 @@
-import { getEffectivePermissions } from "@cometa/auth";
+import { getEffectivePermissions, requireClerkAuth } from "@cometa/auth";
 import { createMiddleware } from "hono/factory";
 import type { TasksEnv } from "../lib/types.js";
+
+// Fail-fast at module load: a Lambda missing CLERK_SECRET_KEY crashes on cold start
+// instead of returning silent 401s at request time.
+requireClerkAuth();
 
 export const authMiddleware = createMiddleware<TasksEnv>(async (c, next) => {
   const authHeader = c.req.header("Authorization");

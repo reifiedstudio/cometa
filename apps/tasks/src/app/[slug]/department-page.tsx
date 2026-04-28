@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchServices, fetchTasks } from "@/lib/api";
+import { listAgentSlugs } from "@/lib/agents";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { AssignPicker } from "@/components/assign-picker";
@@ -14,9 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ListTodo,
+  Bot,
   Building2,
   Clock,
   Columns3,
+  Eye,
+  Inbox,
   LayoutList,
   Loader2,
   AlertTriangle,
@@ -88,8 +92,12 @@ export default function DepartmentPage() {
     ? servicesData.services.map((s: any) => s.slug)
     : ["accounting", "legal"];
 
+  const knownAgentSlugs = listAgentSlugs();
+  const agentSlugs = slugs.filter((s: string) => knownAgentSlugs.includes(s));
+
   const navItems = [
     { title: "My Tasks", url: "/", icon: ListTodo },
+    { title: "My Requests", url: "/requests", icon: Inbox },
     {
       title: "Departments",
       url: "#",
@@ -98,6 +106,16 @@ export default function DepartmentPage() {
       items: slugs.map((s: string) => ({
         title: serviceMeta[s]?.label ?? s.charAt(0).toUpperCase() + s.slice(1),
         url: `/${s}`,
+      })),
+    },
+    {
+      title: "Agents",
+      url: "#",
+      icon: Bot,
+      isActive: true,
+      items: agentSlugs.map((s: string) => ({
+        title: `${serviceMeta[s]?.label ?? s.charAt(0).toUpperCase() + s.slice(1)} Agent`,
+        url: `/agents/${s}`,
       })),
     },
   ];
@@ -232,6 +250,12 @@ export default function DepartmentPage() {
                         <Clock size={11} />
                         {formatDateTime(task.createdAt)}
                       </span>
+                      {task.seenByAgent && (
+                        <span className="flex items-center gap-1 text-emerald-700">
+                          <Eye size={11} />
+                          Seen by agent · {formatDateTime(task.seenByAgent.at)}
+                        </span>
+                      )}
                     </div>
                     <ChevronRight size={14} className="text-muted-foreground" />
                   </div>

@@ -140,7 +140,9 @@ export async function getTask(id: string): Promise<Task | undefined> {
 
 export async function updateTask(
   id: string,
-  updates: Partial<Pick<Task, "status" | "body" | "assignedTo" | "metadata" | "messages">>,
+  updates: Partial<
+    Pick<Task, "status" | "body" | "assignedTo" | "requestedBy" | "metadata" | "messages" | "seenByAgent">
+  >,
 ): Promise<void> {
   const now = new Date().toISOString();
 
@@ -172,6 +174,11 @@ export async function updateTask(
     expressionParts.push("#messages = :messages");
     names["#messages"] = "messages";
     values[":messages"] = updates.messages;
+  }
+  if (updates.seenByAgent !== undefined) {
+    expressionParts.push("#seenByAgent = :seenByAgent");
+    names["#seenByAgent"] = "seenByAgent";
+    values[":seenByAgent"] = updates.seenByAgent;
   }
 
   // Also update the GSI1SK if status changed so queries by status remain correct

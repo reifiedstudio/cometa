@@ -51,7 +51,7 @@ export function registerTaskTools(server: McpServer): void {
     "get_message",
     "Get a single message by its ID.",
     {
-      id: z.string().describe("Message ID"),
+      id: z.string().describe("Message ID (e.g. msg_<uuid>)"),
     },
     async ({ id }) => {
       const message = await getMessage(id);
@@ -72,14 +72,21 @@ export function registerTaskTools(server: McpServer): void {
       traceId: z
         .string()
         .optional()
-        .describe("Trace ID to link related messages across departments"),
-      referenceId: z.string().optional().describe("Task ID this message relates to"),
+        .describe("Trace ID to link related messages across departments (e.g. trace_<uuid>)"),
+      referenceId: z.string().optional().describe("Task ID this message relates to (e.g. task_<uuid>)"),
+      requestedBy: z
+        .string()
+        .optional()
+        .describe(
+          "Email or slug of the original requester — populated automatically by the gateway when called by a logged-in user. Used so the resulting task shows up in the requester's My Requests.",
+        ),
     },
-    async ({ to, body, type, traceId, referenceId }) => {
+    async ({ to, body, type, traceId, referenceId, requestedBy }) => {
       const message = await sendMessage("gateway", to, body, {
         type,
         traceId,
         referenceId,
+        userEmail: requestedBy,
       });
       return {
         content: [
@@ -136,7 +143,7 @@ export function registerTaskTools(server: McpServer): void {
     "get_task",
     "Get full details of a task by its ID.",
     {
-      id: z.string().describe("Task ID"),
+      id: z.string().describe("Task ID (e.g. task_<uuid>)"),
     },
     async ({ id }) => {
       const task = await getTask(id);
@@ -149,25 +156,32 @@ export function registerTaskTools(server: McpServer): void {
 
   server.tool(
     "create_task",
-    "Create a new task in a department.",
+    "Create a new task in a department. The task is automatically routed to that department's agent for triage (unless `assignedTo` is set to a human user/email). Prefer `send_message` for natural-language requests; reach for `create_task` when you need to set explicit fields like `type` or `traceId` up front.",
     {
       department: z.string().describe("Department slug"),
       body: z.string().describe("Task description"),
       type: z.string().optional().describe("Task type, e.g. 'invoice-approval', 'contract-review'"),
       traceId: z.string().optional().describe("Trace ID to link to existing workflow"),
       assignedTo: z.string().optional().describe("User ID or 'agent'"),
+      requestedBy: z
+        .string()
+        .optional()
+        .describe("Email or slug of the requester — populated automatically by the gateway when called by a logged-in user"),
       status: z.enum(["pending", "assigned", "processing", "awaiting_approval"]).optional(),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     },
-    async ({ department, body, type, traceId, assignedTo, status, metadata }) => {
+    async ({ department, body, type, traceId, assignedTo, requestedBy, status, metadata }) => {
       const now = new Date().toISOString();
       const task = {
-        id: randomUUID(),
+        id: `task_${randomUUID()}`,
         department,
-        traceId: traceId ?? randomUUID(),
+        traceId: traceId ?? `trace_${randomUUID()}`,
         type: type ?? "request",
         status: status ?? ("pending" as const),
-        assignedTo,
+        // Default to "agent" so the department's agent picks it up via stream-router.
+        // Pass an explicit email/user-id to assign to a human and skip the agent.
+        assignedTo: assignedTo ?? "agent",
+        requestedBy,
         body,
         messages: [] as string[],
         metadata,
@@ -195,7 +209,7 @@ export function registerTaskTools(server: McpServer): void {
         .enum(["pending", "assigned", "processing", "awaiting_approval", "completed", "failed"])
         .optional(),
       body: z.string().optional(),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
       assignedTo: z.string().optional(),
     },
     async ({ id, status, body, metadata, assignedTo }) => {
@@ -231,7 +245,7 @@ export function registerTaskTools(server: McpServer): void {
 
       const now = new Date().toISOString();
       const message: ServiceMessage = {
-        id: randomUUID(),
+        id: `msg_${randomUUID()}`,
         traceId: task.traceId,
         from,
         to: task.department,
@@ -245,6 +259,9 @@ export function registerTaskTools(server: McpServer): void {
       await putMessage(message);
       await updateTask(taskId, {
         messages: [...task.messages, message.id],
+        ...(task.seenByAgent
+          ? {}
+          : { seenByAgent: { sessionId: task.metadata?.sessionId as string | undefined, at: now } }),
       });
 
       return {
@@ -278,28 +295,21 @@ export function registerTaskTools(server: McpServer): void {
 
       const now = new Date().toISOString();
       const msg: ServiceMessage = {
-        id: randomUUID(),
+        id: `msg_${randomUUID()}`,
         traceId: task.traceId,
         from: "gateway",
         to: task.department,
         type: "task",
         body: body ?? `Linked task in ${linkedDepartment}`,
         referenceId: taskId,
-        data: {
-          linkedTaskId,
-          linkedDepartment,
-          linkedTaskStatus: linkedStatus,
-        },
+        data: { linkedTaskId, linkedDepartment, linkedTaskStatus: linkedStatus },
         status: "completed",
         timestamp: now,
       };
 
       await putMessage(msg);
-      await updateTask(taskId, {
-        messages: [...task.messages, msg.id],
-      });
+      await updateTask(taskId, { messages: [...task.messages, msg.id] });
 
-      // Store back-reference on the linked task so it knows where it came from
       if (linkedTask) {
         await updateTask(linkedTaskId, {
           metadata: {
@@ -364,7 +374,7 @@ export function registerTaskTools(server: McpServer): void {
     "get_trace",
     "Get all messages and tasks across departments for a trace ID. Use this to see the full workflow history.",
     {
-      traceId: z.string(),
+      traceId: z.string().describe("Trace ID (e.g. trace_<uuid>)"),
     },
     async ({ traceId }) => {
       const result = await queryByTrace(traceId);

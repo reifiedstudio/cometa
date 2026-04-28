@@ -1,6 +1,15 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import type { DynamoDBRecord, DynamoDBStreamEvent } from "aws-lambda";
 
+/**
+ * Stream router — DynamoDB Streams → per-department SQS queues.
+ *
+ * Routes two kinds of INSERT events to the right department queue:
+ *   1. Tasks (PK starts with `TASK#`)             → routed by `department`
+ *   2. Queued messages (PK starts with `MSG#` and `status = "queued"`) → routed by `to`
+ *
+ * UPDATE / REMOVE events are ignored, so status flips never re-trigger the agent.
+ */
 const sqs = new SQSClient({});
 const QUEUE_URLS: Record<string, string> = JSON.parse(process.env.QUEUE_URLS ?? "{}");
 
@@ -18,7 +27,6 @@ export const handler = async (event: DynamoDBStreamEvent) => {
     }
   }
 
-  // Report failures so DynamoDB Streams retries only the failed records
   return {
     batchItemFailures: failures.map((id) => ({ itemIdentifier: id })),
   };
@@ -28,12 +36,20 @@ async function routeRecord(record: DynamoDBRecord) {
   const item = record.dynamodb?.NewImage;
   if (!item) return;
 
-  const status = item.status?.S;
-  if (status !== "queued") return;
+  const pk = record.dynamodb?.Keys?.PK?.S ?? "";
+  let slug: string | undefined;
 
-  const slug = item.to?.S ?? item.GSI1PK?.S?.replace("DEPT#", "");
+  if (pk.startsWith("TASK#")) {
+    slug = item.department?.S;
+  } else if (pk.startsWith("MSG#")) {
+    if (item.status?.S !== "queued") return;
+    slug = item.to?.S ?? item.GSI1PK?.S?.replace("DEPT#", "");
+  } else {
+    return;
+  }
+
   if (!slug) {
-    console.warn("No target service found in record", record.eventID);
+    console.warn("No target department found in record", record.eventID);
     return;
   }
 
@@ -46,9 +62,9 @@ async function routeRecord(record: DynamoDBRecord) {
   await sqs.send(
     new SendMessageCommand({
       QueueUrl: queueUrl,
-      MessageBody: JSON.stringify(record.dynamodb?.NewImage),
+      MessageBody: JSON.stringify(item),
     }),
   );
 
-  console.log(`Routed to ${slug}`, record.eventID);
+  console.log(`Routed ${pk.split("#")[0]} to ${slug}`, record.eventID);
 }

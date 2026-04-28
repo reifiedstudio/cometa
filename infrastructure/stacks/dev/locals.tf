@@ -46,4 +46,14 @@ locals {
     RESEND_API_KEY   = var.resend_api_key
     EMAIL_FROM       = var.email_from
   }
+
+  tasks_api_secrets = {
+    CLERK_SECRET_KEY = var.clerk_secret_key
+    ANTHROPIC_API_KEY = var.anthropic_api_key
+    MCP_AUTH_TOKEN   = var.mcp_auth_token
+  }
+
+  task_worker_secrets = {
+    ANTHROPIC_API_KEY = var.anthropic_api_key
+  }
 }

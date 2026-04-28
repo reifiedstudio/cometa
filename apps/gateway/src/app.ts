@@ -179,9 +179,14 @@ export function createApp(): Hono<GatewayEnv> {
     process.env["TASKS_MCP_URL"]?.replace(/\/mcp$/, "/") ??
     "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws/";
 
+  const upstreamHeaders = (): Record<string, string> => {
+    const token = process.env["MCP_AUTH_TOKEN"];
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   app.get("/mcp/tools/signatures", async (c) => {
     try {
-      const res = await fetch(`${SIGNATURES_API_URL}mcp/tools`);
+      const res = await fetch(`${SIGNATURES_API_URL}mcp/tools`, { headers: upstreamHeaders() });
       if (!res.ok) return c.json({ error: "Signatures tools unavailable" }, 502);
       return c.json(await res.json());
     } catch {
@@ -191,7 +196,7 @@ export function createApp(): Hono<GatewayEnv> {
 
   app.get("/mcp/tools/tasks", async (c) => {
     try {
-      const res = await fetch(`${TASKS_MCP_BASE}mcp/tools`);
+      const res = await fetch(`${TASKS_MCP_BASE}mcp/tools`, { headers: upstreamHeaders() });
       if (!res.ok) return c.json({ error: "Tasks tools unavailable" }, 502);
       return c.json(await res.json());
     } catch {
@@ -203,7 +208,7 @@ export function createApp(): Hono<GatewayEnv> {
 
   app.get("/mcp/tools/utilities", async (c) => {
     try {
-      const res = await fetch(`${UTILITIES_API_URL}mcp/tools`);
+      const res = await fetch(`${UTILITIES_API_URL}mcp/tools`, { headers: upstreamHeaders() });
       if (!res.ok) return c.json({ error: "Utilities tools unavailable" }, 502);
       return c.json(await res.json());
     } catch {
@@ -405,11 +410,20 @@ ${mcpToolListScript(endpoint)}
     const TASKS_MCP_URL =
       process.env["TASKS_MCP_URL"] ??
       "https://agfgro77yt22bbazajupls2ebu0jvfcn.lambda-url.us-east-1.on.aws/mcp";
+    const INTAKE_MCP_URL = process.env["INTAKE_MCP_URL"] ?? "";
+    const SIGNATURES_MCP_URL_CATALOG = process.env["SIGNATURES_MCP_URL"] ?? "";
+    const UTILITIES_MCP_URL_CATALOG = process.env["UTILITIES_MCP_URL"] ?? "";
     const NOTES_MCP_URL = process.env["NOTES_MCP_URL"] ?? "";
 
     const catalog = localTools.map((t) => ({ name: t.name, description: t.description }));
 
-    for (const url of [TASKS_MCP_URL, NOTES_MCP_URL]) {
+    for (const url of [
+      TASKS_MCP_URL,
+      INTAKE_MCP_URL,
+      SIGNATURES_MCP_URL_CATALOG,
+      UTILITIES_MCP_URL_CATALOG,
+      NOTES_MCP_URL,
+    ]) {
       if (!url) continue;
       try {
         const upstream = await getUpstreamTools(url);

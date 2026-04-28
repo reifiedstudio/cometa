@@ -49,3 +49,6 @@ export {
   type Permission,
   type PermissionKey,
 } from "./permissions";
+
+// ── Fail-fast env var validation ──
+export { requireEnv, requireClerkAuth } from "./require-env";
